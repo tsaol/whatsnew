@@ -1,12 +1,48 @@
 """爬虫模块 - 支持RSS订阅源"""
 import feedparser
 import hashlib
+import re
 from datetime import datetime
 
 
 class Crawler:
     def __init__(self, storage):
         self.storage = storage
+
+    def _clean_html(self, text):
+        """清理 HTML 标签和多余空白"""
+        if not text:
+            return ""
+
+        # 移除 HTML 标签
+        text = re.sub(r'<[^>]+>', '', text)
+
+        # 解码 HTML 实体
+        text = text.replace('&lt;', '<').replace('&gt;', '>') \
+                   .replace('&amp;', '&').replace('&quot;', '"') \
+                   .replace('&#39;', "'").replace('&nbsp;', ' ')
+
+        # 移除多余空白
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        return text
+
+    def _extract_summary(self, entry):
+        """智能提取摘要"""
+        # 尝试多个字段
+        summary = entry.get('summary', '') or \
+                  entry.get('description', '') or \
+                  entry.get('content', [{}])[0].get('value', '') if entry.get('content') else ''
+
+        # 清理 HTML
+        summary = self._clean_html(summary)
+
+        # 如果摘要太短或无效，尝试使用标题
+        if not summary or len(summary) < 20 or summary.lower() == 'comments':
+            # 对于 Hacker News 这类，使用标题作为摘要
+            summary = entry.get('title', '暂无描述')
+
+        return summary
 
     def fetch_rss(self, url, source_name, max_items=5):
         """抓取RSS源"""
@@ -27,12 +63,16 @@ class Crawler:
                 if self.storage.is_sent(item_id):
                     continue
 
+                # 提取并清理信息
+                title = self._clean_html(entry.get('title', '无标题'))
+                summary = self._extract_summary(entry)
+
                 # 提取信息
                 item = {
                     'id': item_id,
-                    'title': entry.get('title', '无标题'),
+                    'title': title,
                     'link': entry.get('link', ''),
-                    'summary': entry.get('summary', entry.get('description', '')),
+                    'summary': summary,
                     'published': entry.get('published', ''),
                     'source': source_name
                 }

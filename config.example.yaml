@@ -172,6 +172,13 @@ sources:
 schedule:
   interval_hours: 1  # 每小时检查一次
 
+# AI 分析配置
+ai:
+  enabled: true                                    # 是否启用 AI 分析
+  aws_region: us-west-2                           # AWS 区域
+  model_id: us.anthropic.claude-sonnet-4-5-v2:0  # Claude 4.5 模型
+  min_news_for_analysis: 5                        # 最少多少条新闻才触发分析
+
 # 其他配置
 max_items_per_source: 8  # 每个源最多发送几条新闻
 data_file: data/sent_news.json

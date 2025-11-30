@@ -17,13 +17,41 @@ mailer = Mailer(config.email_config)
 
 # 抓取新闻
 sources = config.sources
-max_items = config.get('max_items_per_source', 5)
+max_items = config.get('max_items_per_source', 8)
 new_items = crawler.fetch_all(sources, max_items)
+
+# AI 分析（如果启用）
+ai_analysis = None
+ai_enabled = config.get('ai.enabled', False)
+min_news = config.get('ai.min_news_for_analysis', 5)
+
+if new_items and ai_enabled and len(new_items) >= min_news:
+    try:
+        print(f"\n🤖 AI 分析已启用，正在使用 Claude 4.5 分析...")
+        from src.analyzer import create_analyzer
+
+        aws_region = config.get('ai.aws_region', 'us-west-2')
+        analyzer = create_analyzer(aws_region=aws_region)
+        ai_analysis = analyzer.analyze(new_items)
+
+        print(f"✅ AI 分析完成")
+        print(f"   - 总结: {ai_analysis.get('summary', 'N/A')[:50]}...")
+        print(f"   - 趋势数: {len(ai_analysis.get('trends', []))}")
+        print(f"   - TOP 新闻: {len(ai_analysis.get('top_news', []))}")
+
+        # 如果有翻译后的数据，使用翻译后的数据替换原始数据
+        if ai_analysis and ai_analysis.get('translated_items'):
+            new_items = ai_analysis['translated_items']
+            print(f"✅ 使用翻译后的新闻数据")
+    except Exception as e:
+        print(f"⚠️  AI 分析失败: {e}")
+        print(f"   继续使用传统方式发送邮件...")
+        ai_analysis = None
 
 # 发送邮件
 if new_items:
     print(f"\n共发现 {len(new_items)} 条新内容")
-    subject, content = mailer.format_news_email(new_items)
+    subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
 
     if mailer.send(subject, content):
         # 标记为已发送

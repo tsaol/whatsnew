@@ -4,6 +4,9 @@ config.yaml
 # 数据文件
 data/
 
+# 临时文件
+email_preview.html
+
 # Python
 __pycache__/
 *.py[cod]
