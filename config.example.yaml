@@ -1,0 +1,177 @@
+# 邮件配置
+email:
+  smtp_server: smtp.126.com  # SMTP 服务器地址
+  smtp_port: 465             # SMTP 端口（126邮箱使用465）
+  username: your-email@126.com      # 发件邮箱
+  password: your-password-here      # 邮箱授权码（不是登录密码）
+  to: recipient@example.com         # 接收邮件的地址
+
+# 新闻源配置
+sources:
+  # 国际科技新闻
+  - name: Hacker News
+    type: rss
+    url: https://news.ycombinator.com/rss
+    enabled: true
+
+  - name: TechCrunch
+    type: rss
+    url: https://techcrunch.com/feed/
+    enabled: true
+
+  - name: The Verge
+    type: rss
+    url: https://www.theverge.com/rss/index.xml
+    enabled: true
+
+  - name: Ars Technica
+    type: rss
+    url: https://feeds.arstechnica.com/arstechnica/index
+    enabled: true
+
+  # 开发者资讯
+  - name: GitHub Trending
+    type: rss
+    url: https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml
+    enabled: true
+
+  - name: Dev.to
+    type: rss
+    url: https://dev.to/feed
+    enabled: true
+
+  - name: GitHub Blog
+    type: rss
+    url: https://github.blog/feed/
+    enabled: true
+
+  # 编程语言
+  - name: Python News
+    type: rss
+    url: https://www.python.org/feeds/community-events.rss.xml
+    enabled: false  # 这个源有问题，暂时禁用
+
+  - name: Rust Blog
+    type: rss
+    url: https://blog.rust-lang.org/feed.xml
+    enabled: true
+
+  # 中文科技资讯
+  - name: 少数派
+    type: rss
+    url: https://sspai.com/feed
+    enabled: true
+
+  - name: V2EX
+    type: rss
+    url: https://www.v2ex.com/index.xml
+    enabled: true
+
+  # AI 和机器学习 - 顶级研究机构
+  - name: OpenAI Blog
+    type: rss
+    url: https://openai.com/blog/rss.xml
+    enabled: true
+
+  - name: Anthropic News
+    type: rss
+    url: https://www.anthropic.com/rss.xml
+    enabled: false  # RSS源不可用
+
+  - name: Google AI Blog
+    type: rss
+    url: https://blog.google/technology/ai/rss/
+    enabled: true
+
+  - name: DeepMind
+    type: rss
+    url: https://deepmind.google/blog/rss/
+    enabled: false  # RSS源不可用
+
+  - name: Meta AI
+    type: rss
+    url: https://ai.meta.com/blog/feed/
+    enabled: false  # RSS源不可用
+
+  - name: Microsoft Research AI
+    type: rss
+    url: https://www.microsoft.com/en-us/research/feed/
+    enabled: true
+
+  # GenAI 和 LLM 框架
+  - name: Hugging Face Blog
+    type: rss
+    url: https://huggingface.co/blog/feed.xml
+    enabled: true
+
+  - name: LangChain Blog
+    type: rss
+    url: https://blog.langchain.dev/rss
+    enabled: false  # RSS源不可用
+
+  - name: LlamaIndex Blog
+    type: rss
+    url: https://blog.llamaindex.ai/feed
+    enabled: false  # RSS源不可用
+
+  # AI 新闻和分析
+  - name: VentureBeat AI
+    type: rss
+    url: https://venturebeat.com/category/ai/feed
+    enabled: true
+
+  - name: MIT Tech Review AI
+    type: rss
+    url: https://www.technologyreview.com/topic/artificial-intelligence/feed/
+    enabled: true
+
+  - name: DeepLearning.AI
+    type: rss
+    url: https://www.deeplearning.ai/feed/
+    enabled: false  # RSS源不可用
+
+  # AI 工具和应用平台
+  - name: Replicate Blog
+    type: rss
+    url: https://replicate.com/blog/rss
+    enabled: true
+
+  - name: Weights & Biases
+    type: rss
+    url: https://wandb.ai/fully-connected/feed
+    enabled: false  # RSS源不可用
+
+  # 学术和论文
+  - name: Papers with Code
+    type: rss
+    url: https://paperswithcode.com/feeds/newsletter.rss
+    enabled: false  # RSS源不可用
+
+  - name: arXiv cs.AI
+    type: rss
+    url: https://export.arxiv.org/rss/cs.AI
+    enabled: true
+
+  # 云计算 - AI/ML 服务
+  - name: AWS Machine Learning Blog
+    type: rss
+    url: https://aws.amazon.com/blogs/machine-learning/feed/
+    enabled: true
+
+  - name: Google Cloud AI
+    type: rss
+    url: https://cloud.google.com/blog/products/ai-machine-learning/rss/
+    enabled: false  # RSS源不可用
+
+  - name: Azure AI
+    type: rss
+    url: https://techcommunity.microsoft.com/plugins/custom/microsoft/o365/custom-blog-rss?board=azure-ai-services
+    enabled: false  # RSS源不可用
+
+# 调度配置
+schedule:
+  interval_hours: 1  # 每小时检查一次
+
+# 其他配置
+max_items_per_source: 8  # 每个源最多发送几条新闻
+data_file: data/sent_news.json
