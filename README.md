@@ -2,7 +2,7 @@
 
 An intelligent news aggregator **focused on AI, GenAI, and Agentic AI**, powered by AWS Bedrock Claude Sonnet 4.5 for smart analysis, translation, and curation.
 
-## 🎯 Core Focus
+## Core Focus
 
 This tool is specifically designed for:
 - **GenAI/LLM**: Large models, Prompt engineering, RAG, Fine-tuning
@@ -11,51 +11,63 @@ This tool is specifically designed for:
 - **Cloud AI Services**: AWS Bedrock, Azure OpenAI, GCP Vertex AI
 - **AI Tooling**: Hugging Face, LangChain, LlamaIndex
 
-## ✨ Key Features
+## Key Features
 
-### 🤖 AI-Powered Analysis (Claude Sonnet 4.5)
+### AI-Powered Analysis (Claude Sonnet 4.5)
 - **7-Node Workflow**: Categorize → Filter → Score → Enhance → Translate → Find Trends → Summarize
 - **Smart Filtering**: AI removes non-AI content automatically
 - **Relevance Scoring**: Prioritizes breakthrough AI news (1-10 scale)
 - **Summary Enhancement**: Generates detailed descriptions for sparse content
 - **Bilingual Support**: Auto-translates English news to Chinese
 
-### 📧 Professional Email Digest
+### Professional Email Digest
 - **Modern Design**: Card-based layout with unified purple theme
 - **Bullet Points Summary**: Clear daily highlights
 - **TOP News Picks**: AI-curated top 5 with full summaries
 - **Source Grouping**: News organized by publication
 - **Complete Translations**: Both titles and summaries in EN/CN
 
-### 📰 Curated AI News Sources
+### Curated AI News Sources
 - **AI Companies**: OpenAI, Anthropic, Google AI, DeepMind
 - **AI Frameworks**: LangChain, LlamaIndex, Hugging Face
 - **Cloud Providers**: AWS ML Blog, Azure AI, Google Cloud AI
 - **Industry Analysis**: TechCrunch AI, VentureBeat AI, MIT Tech Review AI
 - **Research**: arXiv cs.AI, Microsoft Research AI
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 whatsnew/
-├── config.yaml              # Configuration (DO NOT commit!)
-├── requirements.txt         # Python dependencies
-├── main.py                  # Scheduled runner
-├── test_once.py            # One-time test
-├── preview_email.py        # Generate HTML preview
-├── src/
-│   ├── config.py           # Configuration loader
-│   ├── crawler.py          # RSS crawler with HTML cleanup
-│   ├── analyzer.py         # AI analysis (7-node LangGraph workflow)
-│   ├── mailer.py           # Email formatter with modern template
-│   └── storage.py          # Deduplication storage
-└── data/
-    └── sent_news.json      # Sent news records
+ config.yaml              # Configuration (DO NOT commit!)
+ requirements.txt         # Python dependencies
+ main.py                  # Scheduled runner
+ test_once.py            # One-time test
+ preview_email.py        # Generate HTML preview
+ src/
+    config.py           # Configuration loader
+    crawler.py          # RSS crawler with HTML cleanup
+    analyzer.py         # AI analysis (7-node LangGraph workflow)
+    mailer.py           # Email formatter with modern template
+    storage.py          # Deduplication storage
+ data/
+     sent_news.json      # Sent news records
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
+
+**Option A: Using uv (Recommended - 10x faster)**
+
+```bash
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv pip install -r requirements.txt
+```
+
+**Option B: Using pip**
 
 ```bash
 pip install -r requirements.txt
@@ -85,7 +97,7 @@ export AWS_DEFAULT_REGION=us-west-2
 
 ### 3. Configure Email and News Sources
 
-**⚠️ Important: `config.yaml` contains secrets and is git-ignored!**
+** Important: `config.yaml` contains secrets and is git-ignored!**
 
 ```bash
 cp config.example.yaml config.yaml
@@ -133,7 +145,7 @@ python main.py
 # Press Ctrl+C to stop
 ```
 
-## 🧠 AI Analysis Workflow
+## AI Analysis Workflow
 
 The system uses a 7-node LangGraph workflow powered by Claude Sonnet 4.5:
 
@@ -148,10 +160,10 @@ The system uses a 7-node LangGraph workflow powered by Claude Sonnet 4.5:
 ```
 
 **Filtering Criteria:**
-- ✅ **Keep**: GenAI, LLMs, AI Agents, MLOps, Cloud AI, AI research
-- ❌ **Remove**: General software dev, gaming, hardware, shopping deals
+-  **Keep**: GenAI, LLMs, AI Agents, MLOps, Cloud AI, AI research
+-  **Remove**: General software dev, gaming, hardware, shopping deals
 
-## 📊 News Sources (Enabled by Default)
+## News Sources (Enabled by Default)
 
 ### AI Companies & Research
 - **OpenAI Blog** - GPT/ChatGPT updates
@@ -181,11 +193,11 @@ The system uses a 7-node LangGraph workflow powered by Claude Sonnet 4.5:
 ### Developer Community
 - **GitHub Blog** - Copilot, AI security (filtered for AI content)
 
-## 🎨 Email Template Features
+## Email Template Features
 
 ### Daily Highlights (Bullet Points)
 ```
-💡 Today's Focus
+ Today's Focus
 • GitHub releases AI Agent security framework
 • Claude 3.5 Sonnet announces new capabilities
 • Research reveals AI model bias challenges
@@ -193,13 +205,13 @@ The system uses a 7-node LangGraph workflow powered by Claude Sonnet 4.5:
 
 ### TOP News (AI-Curated)
 ```
-#1 9分  Achieving lasting remission for HIV  [Ars Technica]
-        实现HIV持久缓解
+#1 9  Achieving lasting remission for HIV  [Ars Technica]
+        HIV
 
         Promising trials using engineered antibodies...
-        使用工程抗体的临床试验显示'功能性治愈'可能指日可待...
+        ''...
 
-        💡 Major medical breakthrough using AI
+         Major medical breakthrough using AI
 ```
 
 ### Complete News List (Grouped by Source)
@@ -208,7 +220,7 @@ The system uses a 7-node LangGraph workflow powered by Claude Sonnet 4.5:
 - Full EN/CN translations
 - Clean, scannable layout
 
-## ⚙️ Configuration
+## Configuration
 
 ### AI Analysis Settings
 
@@ -247,7 +259,7 @@ max_items_per_source: 8          # Max items per source
 data_file: data/sent_news.json   # Deduplication database
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### AWS Bedrock Access Denied
 - Ensure you've requested model access in AWS Console → Bedrock
@@ -266,10 +278,10 @@ data_file: data/sent_news.json   # Deduplication database
 
 ### Translation Failures
 - AI removes double quotes in translations to prevent JSON errors
-- Uses single quotes '…' or guillemets 《…》 instead
+- Uses single quotes '…' or guillemets … instead
 - Retries with smaller batches if timeout
 
-## 📦 Deployment
+## Deployment
 
 ### Run as systemd service (Linux)
 
@@ -329,7 +341,7 @@ docker run -d \
   whatsnew
 ```
 
-## 🛡️ Security Best Practices
+## Security Best Practices
 
 1. **Never commit** `config.yaml` (git-ignored by default)
 2. **Use AWS IAM roles** instead of access keys when possible
@@ -337,7 +349,7 @@ docker run -d \
 4. **Limit Bedrock permissions** to only required models
 5. **Use email app passwords**, not account passwords
 
-## 📊 Cost Estimation (AWS Bedrock)
+## Cost Estimation (AWS Bedrock)
 
 **Claude Sonnet 4.5 pricing** (us-west-2):
 - Input: $3 per million tokens
@@ -354,7 +366,7 @@ docker run -d \
 - Disable translation if not needed
 - Use fewer news sources
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Areas for improvement:
 
@@ -364,24 +376,24 @@ Contributions welcome! Areas for improvement:
 - [ ] Add Slack/Discord notifications
 - [ ] Create mobile-optimized email template
 
-## 📄 License
+## License
 
 MIT License - feel free to use and modify!
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **AWS Bedrock** - Claude Sonnet 4.5 API
 - **LangChain/LangGraph** - AI workflow orchestration
 - **Anthropic** - Claude model
 - All the excellent AI news sources
 
-## ⭐ Support
+## Support
 
 If you find this project helpful, please:
-- Give it a ⭐️ on GitHub
+- Give it a star on GitHub
 - Share with your AI/ML community
 - Report issues or suggest features
 
 ---
 
-**Built with ❤️ for the AI community**
+**Built with  for the AI community**
