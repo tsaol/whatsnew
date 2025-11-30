@@ -1,59 +1,61 @@
-# WhatsNew - 新闻爬虫聚合平台
+# WhatsNew - News Aggregator
 
-简单的 Python 新闻聚合工具，定时抓取 RSS 新闻源并发送到邮箱。
+English | [简体中文](README_zh.md)
 
-## 功能特点
+A simple Python-based news aggregator that crawls RSS feeds and sends updates to your email.
 
-- RSS 订阅源爬取
-- 自动去重（不重复发送已读新闻）
-- HTML 格式邮件推送
-- 定时调度执行
-- 简单的配置文件
+## Features
 
-## 项目结构
+- RSS feed crawling from multiple sources
+- Automatic deduplication (no duplicate news)
+- HTML formatted email notifications
+- Scheduled execution
+- Simple YAML configuration
+
+## Project Structure
 
 ```
 whatsnew/
-├── config.yaml              # 配置文件
-├── requirements.txt         # 依赖包
-├── main.py                  # 主程序
+├── config.yaml              # Configuration file
+├── requirements.txt         # Python dependencies
+├── main.py                  # Main program
 ├── src/
-│   ├── config.py           # 配置管理
-│   ├── crawler.py          # 爬虫模块
-│   ├── mailer.py           # 邮件发送
-│   └── storage.py          # 数据存储
+│   ├── config.py           # Configuration management
+│   ├── crawler.py          # Crawler module
+│   ├── mailer.py           # Email sender
+│   └── storage.py          # Data storage
 └── data/
-    └── sent_news.json      # 已发送记录
+    └── sent_news.json      # Sent news records
 ```
 
-## 快速开始
+## Quick Start
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 配置邮箱和新闻源
+### 2. Configure Email and News Sources
 
-**重要：配置文件包含敏感信息，请勿提交到 git！**
+**Important: The configuration file contains sensitive information. Do NOT commit it to git!**
 
-复制配置模板并编辑：
+Copy the configuration template and edit it:
 
 ```bash
 cp config.example.yaml config.yaml
-# 然后编辑 config.yaml，填入你的邮箱信息
+# Then edit config.yaml and fill in your email credentials
 ```
 
-编辑 `config.yaml`:
+Edit `config.yaml`:
 
 ```yaml
 email:
-  smtp_server: smtp.126.com       # SMTP 服务器
-  smtp_port: 465                  # 端口
-  username: your-email@126.com    # 发件邮箱
-  password: your-auth-code        # 邮箱授权码（不是登录密码！）
-  to: recipient@example.com       # 收件邮箱
+  smtp_server: smtp.126.com       # SMTP server
+  smtp_port: 465                  # SMTP port
+  username: your-email@126.com    # Sender email
+  password: your-auth-code        # Email authorization code (NOT login password!)
+  to: recipient@example.com       # Recipient email
 
 sources:
   - name: Hacker News
@@ -62,63 +64,176 @@ sources:
     enabled: true
 
 schedule:
-  interval_hours: 1
+  interval_hours: 1               # Check interval in hours
 ```
 
-**注意**：
-- `config.yaml` 已添加到 `.gitignore`，不会被 git 跟踪
-- 126 邮箱需要使用**授权码**，不是登录密码
-- 获取授权码：登录 126 邮箱 → 设置 → POP3/SMTP/IMAP → 开启并生成授权码
+**Notes**:
+- `config.yaml` is added to `.gitignore` and will not be tracked by git
+- For 126 email, you need to use an **authorization code**, not your login password
+- To get authorization code: Login to 126 email → Settings → POP3/SMTP/IMAP → Enable and generate code
 
-### 3. 运行程序
+### 3. Run the Program
 
+**Test once:**
+```bash
+python test_once.py
+```
+
+**Run continuously:**
 ```bash
 python main.py
 ```
 
-程序会：
-1. 立即执行一次任务
-2. 按配置的间隔定时执行
-3. 按 `Ctrl+C` 停止
+The program will:
+1. Execute immediately once
+2. Run periodically based on configured interval
+3. Press `Ctrl+C` to stop
 
-## 配置说明
+## Configuration
 
-### 邮箱配置
+### Email Settings
 
-- `smtp_server`: SMTP 服务器地址
-- `smtp_port`: SMTP 端口（126邮箱用465）
-- `username`: 发件邮箱
-- `password`: 邮箱密码或授权码
-- `to`: 收件邮箱
+- `smtp_server`: SMTP server address
+- `smtp_port`: SMTP port (465 for 126 email with SSL)
+- `username`: Sender email address
+- `password`: Email password or authorization code
+- `to`: Recipient email address
 
-### 新闻源配置
+### News Sources
 
-支持 RSS 格式的新闻源：
+Supports RSS format news sources:
 
 ```yaml
 sources:
-  - name: 源名称
+  - name: Source Name
     type: rss
-    url: RSS订阅地址
-    enabled: true  # 是否启用
+    url: RSS feed URL
+    enabled: true  # Enable or disable
 ```
 
-### 调度配置
+### Schedule Configuration
 
-- `interval_hours`: 执行间隔（小时）
+- `interval_hours`: Execution interval in hours
+- `max_items_per_source`: Maximum items to fetch per source
 
-## 常用 RSS 源
+## Built-in AI/Tech News Sources
 
-- Hacker News: https://news.ycombinator.com/rss
-- Python News: https://www.python.org/feeds/community-events.rss.xml
-- GitHub Trending: https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml
+The project comes with 20+ high-quality RSS feeds:
 
-## 注意事项
+### AI & Research
+- OpenAI Blog, Google AI Blog, Microsoft Research AI
+- Hugging Face Blog, VentureBeat AI, MIT Tech Review AI
+- Replicate Blog, arXiv cs.AI
 
-1. 126 邮箱需要使用授权码，不是登录密码
-2. 首次运行会发送所有新闻，之后只发送新内容
-3. 数据保存在 `data/sent_news.json`
+### Developer Resources
+- Hacker News, GitHub Trending, Dev.to
+- TechCrunch, The Verge, Ars Technica
+
+### Cloud AI Services
+- AWS Machine Learning Blog
+
+### Chinese Tech News
+- 少数派 (sspai.com), V2EX
+
+See `config.example.yaml` for the complete list.
+
+## Popular RSS Feeds
+
+You can add more RSS feeds to `config.yaml`:
+
+- **Hacker News**: https://news.ycombinator.com/rss
+- **GitHub Trending**: https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml
+- **Python News**: https://www.python.org/feeds/community-events.rss.xml
+- **Reddit Programming**: https://www.reddit.com/r/programming/.rss
+
+## Important Notes
+
+1. **For 126 email users**: Use authorization code, not login password
+2. **First run**: Will send all news. Subsequent runs only send new content
+3. **Data storage**: Sent news records are saved in `data/sent_news.json`
+4. **Security**: Never commit `config.yaml` to version control
+
+## How It Works
+
+1. **Crawl**: Fetches RSS feeds from configured sources
+2. **Parse**: Extracts title, link, summary, and publish date
+3. **Deduplicate**: Checks against local database to avoid duplicates
+4. **Format**: Creates HTML formatted email with all news items
+5. **Send**: Sends email via SMTP
+6. **Record**: Saves sent items to prevent future duplicates
+
+## Troubleshooting
+
+### Email not sending
+- Check SMTP credentials are correct
+- Ensure you're using authorization code (not password) for 126 email
+- Verify SMTP server and port settings
+
+### No new content found
+- Check if RSS feeds are accessible
+- Some feeds update infrequently
+- Verify `enabled: true` for desired sources
+
+### RSS parsing warnings
+- Some RSS feeds may have format issues
+- You can disable problematic sources by setting `enabled: false`
+
+## Deployment
+
+### Run as systemd service (Linux)
+
+Create `/etc/systemd/system/whatsnew.service`:
+
+```ini
+[Unit]
+Description=WhatsNew News Aggregator
+After=network.target
+
+[Service]
+Type=simple
+User=your-user
+WorkingDirectory=/path/to/whatsnew
+ExecStart=/usr/bin/python3 /path/to/whatsnew/main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable whatsnew
+sudo systemctl start whatsnew
+```
+
+### Run with Docker (optional)
+
+Create a `Dockerfile`:
+
+```dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "main.py"]
+```
+
+Build and run:
+```bash
+docker build -t whatsnew .
+docker run -d --name whatsnew -v $(pwd)/config.yaml:/app/config.yaml whatsnew
+```
 
 ## License
 
 MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Support
+
+If you find this project helpful, please give it a ⭐️ on GitHub!
