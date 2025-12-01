@@ -1,0 +1,42 @@
+
+========================================
+WhatsNew 项目更新记录 - 调度方式修改
+========================================
+日期: 2025-12-01 03:00 UTC
+实例: i-03fef19e12ef1be52 (q-cli-webui/whatsnew)
+操作者: Claude Code Assistant
+状态: ✅ 完成
+
+## 📋 任务概要
+
+本次会话完成：
+1. ✅ 更新邮件收件人: cc6776@126.com → caoliuh@amazon.com
+2. ✅ 修改调度方式: 每小时 → 每天北京时间06:00
+3. ✅ 实现时区转换: 北京时间 → UTC
+4. ✅ 更新代码逻辑并重启服务
+
+## 📝 主要改动
+
+### config.yaml (不提交)
+- 邮件收件人: caoliuh@amazon.com
+- 调度配置: daily_time: "06:00"
+
+### main.py (已提交)
+- 新增: from datetime import datetime, timedelta
+- 时区转换: 北京时间06:00 → UTC 22:00
+- 调度方式: schedule.every().day.at(utc_time)
+- 显示下次执行时间（UTC + 北京时间）
+- 修复 f-string 语法
+
+## 🖥️ 服务器信息
+- 实例: i-03fef19e12ef1be52 (t3.xlarge)
+- 系统: Ubuntu 22.04.5 LTS
+- 区域: us-west-2d
+- 进程: PID 4414, 运行正常
+
+## ⏰ 调度详情
+- 执行时间: 每天北京时间 06:00
+- UTC 时间: 每天 22:00 (前一天)
+- 实现方式: Python schedule 库
+
+========================================

@@ -1,6 +1,7 @@
 """WhatsNew - 新闻爬虫聚合平台主程序"""
 import time
 import schedule
+from datetime import datetime, timedelta
 from src.config import Config
 from src.storage import Storage
 from src.crawler import Crawler
@@ -9,9 +10,10 @@ from src.mailer import Mailer
 
 def run_task():
     """执行一次任务"""
-    print(f"\n{'='*50}")
+    separator = "=" * 50
+    print(f"\n{separator}")
     print(f"开始执行任务...")
-    print(f"{'='*50}")
+    print(separator)
 
     # 加载配置
     config = Config('config.yaml')
@@ -69,7 +71,7 @@ def run_task():
     # 统计信息
     stats = storage.get_stats()
     print(f"\n统计: 累计已发送 {stats['total_sent']} 条新闻")
-    print(f"{'='*50}\n")
+    print(f"{separator}\n")
 
 
 def main():
@@ -78,16 +80,30 @@ def main():
 
     # 加载配置
     config = Config('config.yaml')
-    interval = config.get('schedule.interval_hours', 1)
+    beijing_time = config.get('schedule.daily_time', '06:00')
 
-    print(f"调度间隔: 每 {interval} 小时")
+    # 将北京时间转换为UTC时间（北京时间 = UTC+8）
+    hour, minute = map(int, beijing_time.split(':'))
+    utc_hour = (hour - 8) % 24
+    utc_time = f"{utc_hour:02d}:{minute:02d}"
+
+    print(f"调度计划: 每天北京时间 {beijing_time} 发送 (UTC {utc_time})")
+    print(f"下次执行时间将在启动后显示")
     print(f"按 Ctrl+C 退出\n")
 
     # 立即执行一次
     run_task()
 
-    # 设置定时任务
-    schedule.every(interval).hours.do(run_task)
+    # 设置每日定时任务（使用UTC时间）
+    schedule.every().day.at(utc_time).do(run_task)
+
+    # 显示下次执行时间
+    next_run = schedule.next_run()
+    if next_run:
+        print(f"\n下次执行时间: {next_run.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        # 转换为北京时间显示
+        beijing_next = next_run + timedelta(hours=8)
+        print(f"             ({beijing_next.strftime('%Y-%m-%d %H:%M:%S')} 北京时间)\n")
 
     # 循环执行
     try:
