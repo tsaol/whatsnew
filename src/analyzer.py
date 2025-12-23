@@ -369,21 +369,35 @@ class NewsAnalyzerAgent:
             total_chars = len([c for c in text if c.isalpha()])
             return total_chars > 0 and english_chars / total_chars > 0.5
 
-        # 收集需要翻译的新闻
+        # 收集需要翻译的新闻（分开检测标题和摘要）
         to_translate = []
         for idx, item in enumerate(scored):
-            if needs_translation(item['title']) or needs_translation(item['summary']):
+            title_needs = needs_translation(item['title'])
+            summary_needs = needs_translation(item['summary'])
+
+            if title_needs or summary_needs:
                 to_translate.append({
                     'idx': idx,
-                    'title': item['title'],
-                    'summary': item['summary'][:300]  # 限制长度
+                    'title': item['title'] if title_needs else None,
+                    'summary': item['summary'][:300] if summary_needs else None,
+                    'title_needs': title_needs,
+                    'summary_needs': summary_needs
                 })
+                # 如果摘要已经是中文，直接复制到 summary_zh
+                if not summary_needs and item['summary']:
+                    scored[idx]['summary_zh'] = item['summary']
+                # 如果标题已经是中文，直接复制到 title_zh
+                if not title_needs and item['title']:
+                    scored[idx]['title_zh'] = item['title']
 
         if not to_translate:
             print("    无需翻译，全部为中文")
             return {"scored": scored}
 
-        print(f"    需要翻译 {len(to_translate)} 条新闻")
+        # 统计需要翻译的标题和摘要数量
+        titles_to_trans = sum(1 for item in to_translate if item['title'])
+        summaries_to_trans = sum(1 for item in to_translate if item['summary'])
+        print(f"    需要翻译 {len(to_translate)} 条新闻 (标题: {titles_to_trans}, 摘要: {summaries_to_trans})")
 
         # 分批翻译所有新闻
         batch_size = 10
@@ -393,8 +407,11 @@ class NewsAnalyzerAgent:
             batch = to_translate[batch_start:batch_start + batch_size]
             print(f"    正在翻译第 {batch_start+1}-{batch_start+len(batch)} 条...")
 
+            # 只发送需要翻译的内容
             translation_text = "\n\n".join([
-                f"ID: {item['idx']}\n标题: {item['title']}\n摘要: {item['summary']}"
+                f"ID: {item['idx']}" +
+                (f"\n标题: {item['title']}" if item['title'] else "") +
+                (f"\n摘要: {item['summary']}" if item['summary'] else "")
                 for item in batch
             ])
 
@@ -408,6 +425,7 @@ class NewsAnalyzerAgent:
 - 摘要翻译要流畅自然
 - **重要：翻译中如需引用词语，使用书名号《》或单引号'，不要使用双引号"**
 - 返回 JSON 格式：[{"id": "0", "title_zh": "翻译后的标题", "summary_zh": "翻译后的摘要"}, ...]
+- 如果某条新闻只有标题或只有摘要，只返回对应的翻译字段
 - 确保 JSON 格式正确，所有字符串都用双引号包围
 
 只返回有效的JSON数组，不要其他文字。
@@ -440,12 +458,14 @@ class NewsAnalyzerAgent:
                 else:
                     raise ValueError("未找到有效的 JSON 数组")
 
-                # 合并翻译结果到当前批次
+                # 合并翻译结果到当前批次（只更新 LLM 返回的字段）
                 for trans in translations:
                     idx = int(trans['id'])
                     if idx < len(translated_news):
-                        translated_news[idx]['title_zh'] = trans.get('title_zh', '')
-                        translated_news[idx]['summary_zh'] = trans.get('summary_zh', '')
+                        if 'title_zh' in trans and trans['title_zh']:
+                            translated_news[idx]['title_zh'] = trans['title_zh']
+                        if 'summary_zh' in trans and trans['summary_zh']:
+                            translated_news[idx]['summary_zh'] = trans['summary_zh']
 
                 print(f"      成功翻译 {len(translations)} 条")
 

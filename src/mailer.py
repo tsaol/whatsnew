@@ -361,8 +361,6 @@ class Mailer:
                     reason = top_item.get('ai_reason', top_item.get('reason', ''))
                     title = top_item.get('title', '')
                     title_zh = top_item.get('title_zh', '')
-                    summary = top_item.get('summary', '')
-                    summary_zh = top_item.get('summary_zh', '')
                     link = top_item.get('link', '#')
                     source = top_item.get('source', '未知来源')
 
@@ -372,8 +370,6 @@ class Mailer:
                             <a href="{link}" target="_blank">{title}</a>
                             <span class="source-badge">{source}</span>
                             {f'<div class="translation">{title_zh}</div>' if title_zh else ''}
-                            {f'<div style="color:#666; font-size:0.9em; margin-top:6px; padding-left:45px; line-height:1.5;">{summary[:200]}...</div>' if summary else ''}
-                            {f'<div class="translation" style="padding-left:45px;">{summary_zh[:150]}...</div>' if summary_zh else ''}
                             {f'<div class="reason" style="margin-top:8px; padding-top:6px; border-top:1px solid #f0f0f0;">💡 {reason}</div>' if reason else ''}
                         </div>
                     """
@@ -422,6 +418,11 @@ class Mailer:
                 # 获取翻译
                 title_zh = item.get('title_zh', '')
                 summary_zh = item.get('summary_zh', '')
+                summary_text = item['summary'][:250]
+
+                # 检查摘要和翻译是否相同（避免重复显示）
+                # 去除空格后比较前100个字符
+                summary_same = summary_zh and summary_text.replace(' ', '')[:100] == summary_zh.replace(' ', '')[:100]
 
                 html += f"""
                     <div class="{card_class}">
@@ -433,8 +434,8 @@ class Mailer:
                             {meta_html}
                             <span>{item['published']}</span>
                         </div>
-                        <div class="summary">{item['summary'][:250]}...</div>
-                        {f'<div class="translation">{summary_zh[:200]}...</div>' if summary_zh else ''}
+                        <div class="summary">{summary_text}...</div>
+                        {f'<div class="translation">{summary_zh[:200]}...</div>' if summary_zh and not summary_same else ''}
                     </div>
                 """
 
