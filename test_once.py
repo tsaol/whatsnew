@@ -53,11 +53,16 @@ if new_items and ai_enabled and len(new_items) >= min_news:
         ai_analysis = None
 
 # 发送邮件
+email_enabled = config.get('email.enabled', True)
+
 if new_items:
     print(f"\n共发现 {len(new_items)} 条新内容")
     subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
 
-    if mailer.send(subject, content):
+    if not email_enabled:
+        print("[跳过] 邮件发送已禁用 (email.enabled: false)")
+        print("使用 preview_email.py 生成预览")
+    elif mailer.send(subject, content):
         # 标记为已发送
         for item in new_items:
             storage.mark_sent(item['id'], item['title'])
