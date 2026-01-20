@@ -200,7 +200,7 @@ class NewsAnalyzerAgent:
         return {"news_items": filtered_items}
 
     def _score_news(self, state: AnalysisState) -> Dict:
-        """节点3: 评估新闻重要性"""
+        """节点3: 评估新闻重要性 - 聚焦 Agentic AI"""
         print("  [Agent] 正在评估新闻重要性...")
 
         news_items = state["news_items"]
@@ -212,31 +212,64 @@ class NewsAnalyzerAgent:
             for i, item in enumerate(news_items)
         ])
 
-        # 调用 LLM 评分
+        # 调用 LLM 评分 - 优化为更有区分度的评分标准
         messages = [
             SystemMessage(content="""
-你是AI/科技新闻重要性评估专家。为每条新闻评分（1-10分）。
+你是 Agentic AI 领域专家，为 AWS SA 评估新闻价值。严格按以下标准评分（1-10分）。
 
-评分标准：
-- 9-10分: 突破性技术、重大产品发布、行业变革
-- 7-8分: 重要功能更新、有影响力的研究、关键产品
-- 5-6分: 常规更新、一般技术进展
-- 3-4分: 营销内容、促销信息
-- 1-2分: 低价值内容
+**评分标准（必须严格区分，不要都评5分）**：
 
-重点关注：AI研究、GenAI应用、开发工具创新、技术架构
-降低权重：促销、招聘、非技术新闻
+9-10分 [必看]：
+- Agent/Agentic AI 框架重大更新（LangChain、LlamaIndex、CrewAI、AutoGen）
+- MCP (Model Context Protocol) 相关进展
+- Claude/GPT 的 Agent 能力更新
+- AWS Bedrock Agents 新功能
+- 多 Agent 协作、Agent 安全的突破性研究
 
-返回 JSON 格式: [{"id": "0", "score": 8, "reason": "Claude新功能，提升开发效率"}, ...]
-只返回JSON数组，不要其他文字。
+7-8分 [重要]：
+- RAG 技术重要进展
+- Tool Use / Function Calling 更新
+- Agent 开发工具和框架更新
+- LLM 推理优化（与 Agent 相关）
+- 企业级 Agent 落地案例
+
+5-6分 [一般]：
+- 通用 LLM 模型更新（非 Agent 相关）
+- 云服务常规更新
+- 通用 AI 研究进展
+
+3-4分 [低价值]：
+- 公司新闻、人事变动、融资
+- 非技术内容
+- 过于宽泛的综述
+
+1-2分 [不相关]：
+- 与 AI/Agent 无关的内容
+- 营销促销内容
+
+**重要**：评分要有区分度！如果10条新闻，应该有2-3条高分(7+)，3-4条中分(5-6)，其余低分。
+
+返回 JSON: [{"id": "0", "score": 8, "reason": "LangChain Agent重大更新，提升多Agent协作能力"}, ...]
+reason 字段必填，说明评分理由（15-30字）。
+只返回JSON数组。
             """),
-            HumanMessage(content=f"评估这些新闻:\n\n{news_text}")
+            HumanMessage(content=f"严格评估这些新闻（注意区分度）:\n\n{news_text}")
         ]
 
         response = self.llm.invoke(messages)
 
         try:
-            scored = json.loads(response.content)
+            # 尝试提取 JSON
+            content = response.content.strip()
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx+1]
+                scored = json.loads(json_str)
+            else:
+                raise ValueError("未找到有效 JSON")
+
             # 合并评分到原新闻
             scored_news = []
             for item in scored:
@@ -246,7 +279,14 @@ class NewsAnalyzerAgent:
                     news_copy['ai_score'] = item['score']
                     news_copy['ai_reason'] = item.get('reason', '')
                     scored_news.append(news_copy)
-        except:
+
+            # 验证评分分布，如果全是5分则警告
+            scores = [n['ai_score'] for n in scored_news]
+            if len(set(scores)) == 1:
+                print(f"    [警告] 评分无区分度，全部为 {scores[0]} 分")
+
+        except Exception as e:
+            print(f"    评分解析失败: {e}")
             # 如果解析失败，默认评分
             scored_news = [
                 {**item, 'ai_score': 5, 'ai_reason': ''}
@@ -476,48 +516,62 @@ class NewsAnalyzerAgent:
         return {"scored": translated_news}
 
     def _find_trends(self, state: AnalysisState) -> Dict:
-        """节点6: 识别趋势"""
+        """节点6: 识别趋势 - 聚焦 Agentic AI"""
         print("  [Agent] 正在识别趋势...")
 
         scored = state.get("scored", [])
 
-        # 准备高分新闻
-        high_score_news = [n for n in scored if n.get('ai_score', 0) >= 7]
-
-        if not high_score_news:
-            return {"trends": ["暂无明显趋势"]}
+        # 使用所有新闻（不仅是高分），让 LLM 自己判断趋势
+        if not scored:
+            return {"trends": []}
 
         news_text = "\n".join([
-            f"- {item['title']} (评分: {item.get('ai_score', 'N/A')})"
-            for item in high_score_news[:10]
+            f"- {item['title']} (评分: {item.get('ai_score', 'N/A')}, 来源: {item.get('source', '')})"
+            for item in scored[:15]
         ])
 
         # 调用 LLM 识别趋势
         messages = [
             SystemMessage(content="""
-你是AI/科技趋势分析专家。基于今日重要新闻，识别 3-5 个关键趋势。
+你是 Agentic AI 趋势分析专家。基于今日新闻，识别 2-4 个与 Agent/Agentic AI 相关的趋势。
 
-要求：
-- 每个趋势8-15字
-- 聚焦技术方向，不要泛泛而谈
-- 优先：AI应用、模型创新、开发工具、架构演进
-- 避免：促销、活动、招聘
+**聚焦方向**：
+- Agent 框架演进（LangChain、LlamaIndex、CrewAI 等）
+- Multi-Agent 协作和编排
+- Agent 安全和可靠性
+- Tool Use / MCP 生态
+- RAG 和知识检索
+- Agent 在企业的落地应用
+
+**要求**：
+- 每个趋势 8-15 字
+- 必须与 Agent/Agentic AI 相关
+- 具体、有洞察，不要泛泛而谈
+- 如果今日新闻没有明显 Agent 趋势，返回空数组 []
 
 示例：
-["多模态模型实用化加速", "开发工具AI化趋势明显", "云原生AI基础设施成熟"]
+["Agent安全沙箱机制成熟", "文档处理Agent能力提升", "MCP生态快速扩展"]
 
 返回 JSON 格式: ["趋势1", "趋势2", ...]
-只返回JSON数组，不要其他文字。
+只返回JSON数组，不要其他文字。如果没有明显趋势，返回 []。
             """),
-            HumanMessage(content=f"基于这些重要新闻识别趋势:\n\n{news_text}")
+            HumanMessage(content=f"基于这些新闻识别 Agentic AI 趋势:\n\n{news_text}")
         ]
 
         response = self.llm.invoke(messages)
 
         try:
-            trends = json.loads(response.content)
+            content = response.content.strip()
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx+1]
+                trends = json.loads(json_str)
+            else:
+                trends = []
         except:
-            trends = ["今日科技动态多元化"]
+            trends = []
 
         return {"trends": trends}
 

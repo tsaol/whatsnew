@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Agentic AI Focus**: Optimized for AWS SA / Agentic AI Expert
+- **Web Crawlers**: Support for sites without RSS (Anthropic, LangChain, LlamaIndex)
+- **Keyword Filtering**: Agent-related content filter (agent, mcp, tool use, rag, etc.)
+- **Newsletter Deduplication**: Same source newsletters keep only the latest
+- **Corporate News Filter**: Auto-remove HR, funding, policy news
+- **Low-value Content Filter**: Remove pure quotes, bare links
+- **Unified Date Format**: All dates show as YYYY-MM-DD
+- **TOP Recommendations with Reasons**: Each recommendation includes scoring reason
+
+### Changed
+- AI scoring focused on Agentic AI relevance (9-10 for Agent frameworks, MCP)
+- Trend identification focused on Agentic AI only
+- Removed all emojis from code and email templates
+- Anthropic crawler extracts og:title and og:description properly
+- Default `max_days` changed to 3 days (for keyword filtering)
+- DESIGN.md rewritten with user requirements and target profile
+
+### Fixed
+- Anthropic News title parsing (was mixing date/category in title)
+- AI scoring variance (was all 5s, now properly distributed)
+- Trend identification returning "no trends" issue
+- Empty or incorrect date display in emails
+
+## [1.1.0] - 2026-01-20
+
+### Added
 - 48-hour time filter for news (only fetch news from last 2 days)
 - Email duplicate content fix (TOP news no longer shows summaries)
 - DESIGN.md with comprehensive architecture documentation
@@ -16,7 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - TOP news section now only shows title + translation + scoring reason
 - Full news list maintains complete bilingual information
-- Default `max_days` changed from 7 to 2 days (48 hours)
 
 ### Fixed
 - Duplicate Chinese content in email body

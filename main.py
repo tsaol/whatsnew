@@ -20,7 +20,8 @@ def run_task():
 
     # 初始化模块
     storage = Storage(config.get('data_file', 'data/sent_news.json'))
-    crawler = Crawler(storage)
+    keyword_filter = config.get('filter.keyword_filter', None)
+    crawler = Crawler(storage, keyword_filter=keyword_filter)
     mailer = Mailer(config.email_config)
 
     # 抓取新闻
@@ -36,23 +37,23 @@ def run_task():
 
     if new_items and ai_enabled and len(new_items) >= min_news:
         try:
-            print(f"\n🤖 AI 分析已启用，正在使用 Claude 4.5 分析...")
+            print(f"\n[AI] 分析已启用，正在使用 Claude 4.5 分析...")
             from src.analyzer import create_analyzer
 
             aws_region = config.get('ai.aws_region', 'us-west-2')
             analyzer = create_analyzer(aws_region=aws_region)
             ai_analysis = analyzer.analyze(new_items)
 
-            print(f"✅ AI 分析完成")
+            print(f"[OK] AI 分析完成")
             print(f"   - 趋势数: {len(ai_analysis.get('trends', []))}")
             print(f"   - TOP 新闻: {len(ai_analysis.get('top_news', []))}")
 
             # 如果有翻译后的数据，使用翻译后的数据替换原始数据
             if ai_analysis and ai_analysis.get('translated_items'):
                 new_items = ai_analysis['translated_items']
-                print(f"✅ 使用翻译后的新闻数据")
+                print(f"[OK] 使用翻译后的新闻数据")
         except Exception as e:
-            print(f"⚠️  AI 分析失败: {e}")
+            print(f"[WARN] AI 分析失败: {e}")
             print(f"   继续使用传统方式发送邮件...")
             ai_analysis = None
 

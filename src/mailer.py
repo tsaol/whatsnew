@@ -1,9 +1,40 @@
 """邮件发送模块"""
 import smtplib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from collections import defaultdict
+from dateutil import parser as date_parser
+
+
+def format_date(date_str):
+    """统一格式化日期显示"""
+    if not date_str:
+        return ""
+
+    try:
+        # 尝试解析各种日期格式
+        dt = date_parser.parse(date_str)
+        # 统一输出格式：2026-01-20
+        return dt.strftime('%Y-%m-%d')
+    except:
+        # 如果解析失败，尝试提取日期部分
+        # 匹配常见日期格式
+        patterns = [
+            r'(\d{4}-\d{2}-\d{2})',  # 2026-01-20
+            r'(\d{2}/\d{2}/\d{4})',  # 01/20/2026
+            r'(\w{3}\s+\d{1,2},?\s+\d{4})',  # Jan 20, 2026
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, date_str)
+            if match:
+                try:
+                    dt = date_parser.parse(match.group(1))
+                    return dt.strftime('%Y-%m-%d')
+                except:
+                    pass
+        return ""
 
 
 class Mailer:
@@ -43,7 +74,7 @@ class Mailer:
             return None, None
 
         # 邮件主题
-        ai_tag = " 🤖 AI分析" if ai_analysis else ""
+        ai_tag = " [AI]" if ai_analysis else ""
         subject = f"WhatsNew{ai_tag} - {len(items)} 条新内容 ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
 
         # 统一样式设计
@@ -111,7 +142,7 @@ class Mailer:
                     align-items: center;
                 }}
                 .section-title:before {{
-                    content: "🤖";
+                    content: "[AI]";
                     margin-right: 10px;
                     font-size: 1.2em;
                 }}
@@ -307,7 +338,7 @@ class Mailer:
             <div class="container">
                 <!-- 头部 -->
                 <div class="header">
-                    <h1>📬 WhatsNew 每日资讯</h1>
+                    <h1>WhatsNew 每日资讯</h1>
                     <div class="meta">
                         {len(items)} 条新内容 | {datetime.now().strftime('%Y年%m月%d日 %H:%M')}
                     </div>
@@ -335,7 +366,7 @@ class Mailer:
 
                 html += f"""
                     <div class="ai-insight">
-                        💡 <strong>今日聚焦</strong>
+                        <strong>今日聚焦</strong>
                         {summary_html}
                     </div>
                 """
@@ -344,7 +375,7 @@ class Mailer:
             if ai_analysis.get('trends'):
                 html += """
                     <div class="trends">
-                        <span class="label">📊 关键趋势</span>
+                        <span class="label">关键趋势</span>
                 """
                 for trend in ai_analysis['trends']:
                     html += f'<span class="trend-tag">{trend}</span>'
@@ -354,7 +385,7 @@ class Mailer:
             if ai_analysis.get('top_news'):
                 html += """
                     <div class="top-news">
-                        <span class="label" style="display:block; font-weight:600; color:#667eea; margin-bottom:12px;">⭐ TOP 新闻推荐</span>
+                        <span class="label" style="display:block; font-weight:600; color:#667eea; margin-bottom:12px;">TOP 新闻推荐</span>
                 """
                 for idx, top_item in enumerate(ai_analysis['top_news'][:5], 1):
                     score = top_item.get('ai_score', top_item.get('score', 'N/A'))
@@ -370,7 +401,7 @@ class Mailer:
                             <a href="{link}" target="_blank">{title}</a>
                             <span class="source-badge">{source}</span>
                             {f'<div class="translation">{title_zh}</div>' if title_zh else ''}
-                            {f'<div class="reason" style="margin-top:8px; padding-top:6px; border-top:1px solid #f0f0f0;">💡 {reason}</div>' if reason else ''}
+                            {f'<div class="reason" style="margin-top:8px; padding-top:6px; border-top:1px solid #f0f0f0;">{reason}</div>' if reason else ''}
                         </div>
                     """
                 html += "</div>"
@@ -379,7 +410,7 @@ class Mailer:
 
         # 完整新闻 - 按来源分组
         html += '<div class="news-section">'
-        html += '<h2 style="margin-bottom:24px; color:#2c3e50;">📰 完整新闻列表</h2>'
+        html += '<h2 style="margin-bottom:24px; color:#2c3e50;">完整新闻列表</h2>'
 
         # 按来源分组
         grouped_items = defaultdict(list)
@@ -424,6 +455,9 @@ class Mailer:
                 # 去除空格后比较前100个字符
                 summary_same = summary_zh and summary_text.replace(' ', '')[:100] == summary_zh.replace(' ', '')[:100]
 
+                # 格式化日期
+                pub_date = format_date(item.get('published', ''))
+
                 html += f"""
                     <div class="{card_class}">
                         <div class="title">
@@ -432,7 +466,7 @@ class Mailer:
                         {f'<div class="translation">{title_zh}</div>' if title_zh else ''}
                         <div class="meta">
                             {meta_html}
-                            <span>{item['published']}</span>
+                            <span>{pub_date}</span>
                         </div>
                         <div class="summary">{summary_text}...</div>
                         {f'<div class="translation">{summary_zh[:200]}...</div>' if summary_zh and not summary_same else ''}
@@ -447,7 +481,7 @@ class Mailer:
         html += f"""
                 <div class="footer">
                     <p>本邮件由 WhatsNew 自动生成</p>
-                    {'<p>🤖 AI 分析由 AWS Bedrock Claude Sonnet 4.5 提供</p>' if ai_analysis else ''}
+                    {'<p>AI 分析由 AWS Bedrock Claude Sonnet 4.5 提供</p>' if ai_analysis else ''}
                     <p style="margin-top:8px; font-size:0.9em;">
                         共 {len(grouped_items)} 个来源 · {len(items)} 条新闻
                     </p>
