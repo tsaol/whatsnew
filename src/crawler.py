@@ -2,7 +2,8 @@
 import feedparser
 import hashlib
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 
 class Crawler:
@@ -44,8 +45,15 @@ class Crawler:
 
         return summary
 
-    def fetch_rss(self, url, source_name, max_items=5):
-        """抓取RSS源"""
+    def fetch_rss(self, url, source_name, max_items=5, max_days=2):
+        """抓取RSS源
+
+        Args:
+            url: RSS源地址
+            source_name: 来源名称
+            max_items: 最多抓取条数
+            max_days: 最多几天前的新闻（默认2天，即48小时）
+        """
         print(f"正在抓取 {source_name} ...")
 
         try:
@@ -54,8 +62,25 @@ class Crawler:
             if feed.bozo:
                 print(f"  警告: RSS解析可能有问题 - {source_name}")
 
+            # 计算时间阈值
+            cutoff_date = datetime.now() - timedelta(days=max_days)
+
             new_items = []
+            filtered_count = 0
+
             for entry in feed.entries[:max_items * 2]:  # 多抓取一些以防都是旧的
+                # 检查发布日期
+                published_time = entry.get('published_parsed') or entry.get('updated_parsed')
+                if published_time:
+                    try:
+                        pub_datetime = datetime(*published_time[:6])
+                        if pub_datetime < cutoff_date:
+                            filtered_count += 1
+                            continue  # 跳过超过 max_days 天的新闻
+                    except Exception as e:
+                        # 如果日期解析失败，保留这条新闻
+                        pass
+
                 # 生成唯一ID
                 item_id = self._generate_id(entry.get('link', entry.get('id', '')))
 
@@ -82,15 +107,24 @@ class Crawler:
                 if len(new_items) >= max_items:
                     break
 
-            print(f"  找到 {len(new_items)} 条新内容")
+            if filtered_count > 0:
+                print(f"  找到 {len(new_items)} 条新内容 (过滤掉 {filtered_count} 条过期新闻)")
+            else:
+                print(f"  找到 {len(new_items)} 条新内容")
             return new_items
 
         except Exception as e:
             print(f"  抓取失败 {source_name}: {e}")
             return []
 
-    def fetch_all(self, sources, max_items=5):
-        """抓取所有新闻源"""
+    def fetch_all(self, sources, max_items=5, max_days=2):
+        """抓取所有新闻源
+
+        Args:
+            sources: 新闻源列表
+            max_items: 每个源最多抓取条数
+            max_days: 最多几天前的新闻（默认2天，即48小时）
+        """
         all_items = []
 
         for source in sources:
@@ -100,7 +134,8 @@ class Crawler:
                 items = self.fetch_rss(
                     source['url'],
                     source['name'],
-                    max_items
+                    max_items,
+                    max_days
                 )
                 all_items.extend(items)
             else:

@@ -26,7 +26,8 @@ def run_task():
     # 抓取新闻
     sources = config.sources
     max_items = config.get('max_items_per_source', 5)
-    new_items = crawler.fetch_all(sources, max_items)
+    max_days = config.get('max_days', 2)  # 默认2天（48小时）
+    new_items = crawler.fetch_all(sources, max_items, max_days)
 
     # AI 分析（如果启用）
     ai_analysis = None

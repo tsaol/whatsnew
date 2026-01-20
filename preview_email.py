@@ -19,7 +19,8 @@ mailer = Mailer(config.email_config)
 # 抓取新闻用于预览（使用所有启用的源，每个源限制3条）
 sources = config.sources  # 使用所有启用的源
 max_items = 3  # 每个源最多3条，避免预览过长
-new_items = crawler.fetch_all(sources, max_items=max_items)
+max_days = config.get('max_days', 2)  # 默认2天（48小时）
+new_items = crawler.fetch_all(sources, max_items=max_items, max_days=max_days)
 
 print(f"\n抓取到 {len(new_items)} 条新闻")
 
