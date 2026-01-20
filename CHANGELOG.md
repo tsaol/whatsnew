@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Content Categories Display**: News grouped by type (Agent专项/技术深度/AWS聚焦/行业动态)
+- **Source-based Forced Classification**: AWS sources → AWS聚焦, Agent frameworks → Agent专项
+- **Protected Sources**: Core sources (AWS, LangChain, LlamaIndex) skip AI filtering
+- **Title-based Classification**: Keywords in title determine category for non-forced sources
+- **Email Enable/Disable Config**: `email.enabled` flag to disable sending on test machines
 - **Agentic AI Focus**: Optimized for AWS SA / Agentic AI Expert
 - **Web Crawlers**: Support for sites without RSS (Anthropic, LangChain, LlamaIndex)
 - **Keyword Filtering**: Agent-related content filter (agent, mcp, tool use, rag, etc.)
@@ -18,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TOP Recommendations with Reasons**: Each recommendation includes scoring reason
 
 ### Changed
+- Email template now groups by content category instead of source
+- Category icons with colors (A=purple, T=blue, W=orange, I=green)
 - AI scoring focused on Agentic AI relevance (9-10 for Agent frameworks, MCP)
 - Trend identification focused on Agentic AI only
 - Removed all emojis from code and email templates
@@ -26,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DESIGN.md rewritten with user requirements and target profile
 
 ### Fixed
+- LlamaIndex crawler now extracts date from URL/title for proper filtering
+- AWS content no longer filtered out by AI (protected source)
 - Anthropic News title parsing (was mixing date/category in title)
 - AI scoring variance (was all 5s, now properly distributed)
 - Trend identification returning "no trends" issue
