@@ -90,7 +90,31 @@ EXCLUDE_KEYWORDS = [
 - Must include scoring reason (15-30 chars)
 - Explain why it's valuable for Agentic AI expert
 
-### 5. Output Requirements
+### 5. Content Categories (by Type)
+
+News is organized by **content type** rather than by source, optimized for Agentic AI Expert:
+
+| Category | Icon | Description | Priority |
+|----------|------|-------------|----------|
+| **Agent 专项** | A | Agent 框架、MCP、Multi-Agent、Tool Use | 1 (Highest) |
+| **技术深度** | T | LLM、RAG、模型优化、算法创新 | 2 |
+| **AWS 聚焦** | W | Bedrock、SageMaker、AWS AI 服务 | 3 |
+| **行业动态** | I | 企业落地、应用案例、市场趋势 | 4 (Lowest) |
+
+#### Category Assignment Rules
+1. **Agent 专项** (highest priority): Any news mentioning Agent/Agentic AI frameworks, MCP, Tool Use
+2. **AWS 聚焦**: AWS-related content prioritized for AWS SA audience
+3. **技术深度**: Deep technical content (LLM, RAG, algorithms)
+4. **行业动态**: Everything else (enterprise cases, market news)
+
+#### Email Display Order
+- TOP 新闻推荐 (sorted by score)
+- Agent 专项 (most relevant to user)
+- 技术深度 (technical depth)
+- AWS 聚焦 (AWS SA focus)
+- 行业动态 (general news)
+
+### 6. Output Requirements
 
 #### Email Format
 - No emojis (user preference)
@@ -98,6 +122,7 @@ EXCLUDE_KEYWORDS = [
 - Chinese translations for titles and summaries
 - Clear score differentiation
 - TOP recommendations with reasons
+- **Content grouped by category** (not by source)
 
 #### Quality Metrics
 - High relevance to Agentic AI (>70% of content)
@@ -220,7 +245,7 @@ max_days: 3
 - [x] Unified date format (YYYY-MM-DD)
 - [x] TOP recommendations with reasons
 - [x] Remove emojis
-- [ ] Content type grouping (deep tech vs news)
+- [x] Content type grouping (Agent专项/技术深度/AWS聚焦/行业动态)
 - [ ] Twitter/X integration for AI KOLs
 
 ### Future

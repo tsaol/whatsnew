@@ -64,8 +64,32 @@ class NewsAnalyzerAgent:
 
         return workflow.compile()
 
+    # 内容分类定义（为 Agentic AI 专家优化）
+    CONTENT_CATEGORIES = {
+        "Agent 专项": {
+            "icon": "A",
+            "description": "Agent 框架、MCP、Multi-Agent、Tool Use",
+            "priority": 1
+        },
+        "技术深度": {
+            "icon": "T",
+            "description": "LLM、RAG、模型优化、算法创新",
+            "priority": 2
+        },
+        "AWS 聚焦": {
+            "icon": "W",
+            "description": "Bedrock、SageMaker、AWS AI 服务",
+            "priority": 3
+        },
+        "行业动态": {
+            "icon": "I",
+            "description": "企业落地、应用案例、市场趋势",
+            "priority": 4
+        }
+    }
+
     def _categorize_news(self, state: AnalysisState) -> Dict:
-        """节点1: 分类新闻"""
+        """节点1: 分类新闻 - 为 Agentic AI 专家优化"""
         print("  [Agent] 正在分类新闻...")
 
         news_items = state["news_items"]
@@ -77,21 +101,43 @@ class NewsAnalyzerAgent:
             for i, item in enumerate(news_items)
         ])
 
-        # 调用 LLM 分类
+        # 调用 LLM 分类 - 使用新的分类体系
         messages = [
             SystemMessage(content="""
-你是AI/科技新闻分类专家。将新闻分类到以下类别：
+你是 Agentic AI 领域专家。将新闻分类到以下 4 个类别（每条新闻只能属于一个类别）：
 
-核心类别：
-- AI Research: 学术研究、论文、算法创新
-- GenAI & LLM: 大模型、生成式AI应用、Prompt工程
-- AI Infrastructure: ML平台、训练框架、模型部署
-- Developer Tools: IDE、框架、库、开发工具
-- Cloud Services: 云计算、AWS/Azure/GCP更新
-- Industry & Business: 公司动态、融资、战略
-- Other: 其他
+**Agent 专项**（最高优先级）:
+- Agent/Agentic AI 框架更新（LangChain、LlamaIndex、CrewAI、AutoGen）
+- MCP (Model Context Protocol) 相关
+- Multi-Agent 系统、Agent 编排
+- Tool Use / Function Calling
+- Agent 安全、可观测性
+- 自主代理、Agent 工作流
 
-返回 JSON 格式: {"AI Research": ["0", "1"], "GenAI & LLM": ["2"], ...}
+**技术深度**:
+- LLM 模型更新、推理优化
+- RAG 技术、向量数据库
+- 文档处理、数据解析
+- Prompt 工程、Fine-tuning
+- 算法研究、论文解读
+
+**AWS 聚焦**:
+- 来源为 AWS 博客的所有内容（AWS News Blog、AWS AI Blog、AWS ML Blog 等）
+- Amazon Bedrock、Bedrock Agents、SageMaker
+- AWS 服务更新、AWS Weekly Roundup
+
+**行业动态**:
+- 企业 AI 落地案例
+- 产品发布、市场趋势
+- 其他 AI 相关新闻
+
+**分类原则**（严格按顺序判断）：
+1. **来源是 AWS 的** → 归 "AWS 聚焦"（最高优先，无论内容是什么）
+2. 涉及 Agent/Agentic/MCP/Tool Use → 归 "Agent 专项"
+3. 技术性强（LLM/RAG/算法） → 归 "技术深度"
+4. 其余 → 归 "行业动态"
+
+返回 JSON 格式: {"Agent 专项": ["0", "2"], "技术深度": ["1", "3"], ...}
 只返回JSON，不要其他文字。
             """),
             HumanMessage(content=f"分类这些新闻:\n\n{news_text}")
@@ -100,10 +146,17 @@ class NewsAnalyzerAgent:
         response = self.llm.invoke(messages)
 
         try:
-            categorized = json.loads(response.content)
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx+1]
+                categorized = json.loads(json_str)
+            else:
+                raise ValueError("未找到 JSON")
         except:
             # 如果解析失败，默认分类
-            categorized = {"Other": [str(i) for i in range(len(news_items))]}
+            categorized = {"行业动态": [str(i) for i in range(len(news_items))]}
 
         return {"categorized": categorized}
 
@@ -114,24 +167,31 @@ class NewsAnalyzerAgent:
         news_items = state["news_items"]
         categorized = state.get("categorized", {})
 
-        # 技术社区来源（放宽标准）
-        tech_community_sources = {
+        # 受保护的来源（不过滤，直接保留）
+        protected_sources = {
+            # 技术社区
             "Hacker News", "GitHub Trending", "GitHub Blog",
-            "Dev.to", "Rust Blog", "Python Blog"
+            "Dev.to", "Rust Blog", "Python Blog",
+            # AWS 来源（对 AWS SA 必看）
+            "AWS News Blog", "AWS AI Blog", "AWS Machine Learning Blog",
+            "AWS Compute Blog", "AWS Developer Blog",
+            # Agent 框架（核心内容）
+            "LangChain Blog", "LlamaIndex Blog", "CrewAI Blog",
+            "Semantic Kernel Blog", "Anthropic News",
         }
 
-        # 准备新闻文本（只过滤非技术社区来源）
+        # 准备新闻文本（只过滤非受保护来源）
         items_to_check = []
-        tech_community_items = []
+        protected_items = []
 
         for i, item in enumerate(news_items):
-            if item['source'] in tech_community_sources:
-                tech_community_items.append(i)
+            if item['source'] in protected_sources:
+                protected_items.append(i)
             else:
                 items_to_check.append(i)
 
         if not items_to_check:
-            print(f"    全部为技术社区来源，跳过过滤")
+            print(f"    全部为受保护来源，跳过过滤")
             return {"news_items": news_items}
 
         # 准备需要检查的新闻
@@ -191,7 +251,7 @@ class NewsAnalyzerAgent:
             relevant_ids = set(items_to_check)
 
         # 合并技术社区新闻 + 相关新闻
-        keep_ids = set(tech_community_items) | relevant_ids
+        keep_ids = set(protected_items) | relevant_ids
         filtered_items = [news_items[i] for i in sorted(keep_ids)]
 
         filtered_count = len(news_items) - len(filtered_items)
@@ -199,11 +259,63 @@ class NewsAnalyzerAgent:
 
         return {"news_items": filtered_items}
 
+    # 来源到分类的强制映射（仅对明确的来源强制分类）
+    SOURCE_CATEGORY_MAP = {
+        # AWS 来源 → AWS 聚焦（强制）
+        'AWS News Blog': 'AWS 聚焦',
+        'AWS AI Blog': 'AWS 聚焦',
+        'AWS Machine Learning Blog': 'AWS 聚焦',
+        'AWS Compute Blog': 'AWS 聚焦',
+        'AWS Developer Blog': 'AWS 聚焦',
+        # 纯 Agent 框架来源 → Agent 专项（强制）
+        'CrewAI Blog': 'Agent 专项',
+        'Semantic Kernel Blog': 'Agent 专项',
+        # Anthropic (MCP 相关) → Agent 专项（强制）
+        'Anthropic News': 'Agent 专项',
+        # 注意：LangChain/LlamaIndex 不强制，让 AI 根据内容判断
+        # 因为它们有 Agent 内容也有 RAG/技术深度内容
+    }
+
+    # 基于标题关键词的分类规则（用于非强制来源）
+    TITLE_CATEGORY_KEYWORDS = {
+        'Agent 专项': ['agent', 'agentic', 'multi-agent', 'mcp', 'tool use', 'function call'],
+        '技术深度': ['rag', 'retrieval', 'embedding', 'vector', 'llm', 'fine-tun', 'prompt', 'ocr', 'parse', 'extract'],
+        'AWS 聚焦': ['aws', 'bedrock', 'sagemaker', 'amazon'],
+    }
+
     def _score_news(self, state: AnalysisState) -> Dict:
-        """节点3: 评估新闻重要性 - 聚焦 Agentic AI"""
+        """节点3: 评估新闻重要性 - 聚焦 Agentic AI，并分配内容类型"""
         print("  [Agent] 正在评估新闻重要性...")
 
         news_items = state["news_items"]
+        categorized = state.get("categorized", {})
+
+        # 构建 ID -> category 映射（结合 AI 分类和强制映射）
+        id_to_category = {}
+        for category, ids in categorized.items():
+            for id_str in ids:
+                id_to_category[int(id_str)] = category
+
+        # 对特定来源强制覆盖分类，或基于标题关键词分类
+        for i, item in enumerate(news_items):
+            source = item.get('source', '')
+            title_lower = item.get('title', '').lower()
+
+            # 1. 先检查强制来源映射
+            if source in self.SOURCE_CATEGORY_MAP:
+                id_to_category[i] = self.SOURCE_CATEGORY_MAP[source]
+            else:
+                # 2. 基于标题关键词分类（按优先级：Agent > 技术深度 > AWS）
+                matched_category = None
+                for category in ['Agent 专项', '技术深度', 'AWS 聚焦']:
+                    keywords = self.TITLE_CATEGORY_KEYWORDS.get(category, [])
+                    if any(kw in title_lower for kw in keywords):
+                        matched_category = category
+                        break
+
+                if matched_category:
+                    id_to_category[i] = matched_category
+                # 否则保留 AI 的分类结果
 
         # 准备新闻文本
         news_text = "\n\n".join([
@@ -270,7 +382,7 @@ reason 字段必填，说明评分理由（15-30字）。
             else:
                 raise ValueError("未找到有效 JSON")
 
-            # 合并评分到原新闻
+            # 合并评分到原新闻，并附上 category
             scored_news = []
             for item in scored:
                 news_id = int(item['id'])
@@ -278,6 +390,8 @@ reason 字段必填，说明评分理由（15-30字）。
                     news_copy = news_items[news_id].copy()
                     news_copy['ai_score'] = item['score']
                     news_copy['ai_reason'] = item.get('reason', '')
+                    # 附上内容类型
+                    news_copy['category'] = id_to_category.get(news_id, '行业动态')
                     scored_news.append(news_copy)
 
             # 验证评分分布，如果全是5分则警告
@@ -289,8 +403,8 @@ reason 字段必填，说明评分理由（15-30字）。
             print(f"    评分解析失败: {e}")
             # 如果解析失败，默认评分
             scored_news = [
-                {**item, 'ai_score': 5, 'ai_reason': ''}
-                for item in news_items
+                {**item, 'ai_score': 5, 'ai_reason': '', 'category': id_to_category.get(i, '行业动态')}
+                for i, item in enumerate(news_items)
             ]
 
         return {"scored": scored_news}

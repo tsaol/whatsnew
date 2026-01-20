@@ -8,6 +8,15 @@ from collections import defaultdict
 from dateutil import parser as date_parser
 
 
+# 内容分类定义（按优先级排序）
+CONTENT_CATEGORIES = [
+    {"name": "Agent 专项", "icon": "A", "description": "Agent 框架、MCP、Multi-Agent、Tool Use", "color": "#667eea"},
+    {"name": "技术深度", "icon": "T", "description": "LLM、RAG、模型优化、算法创新", "color": "#3498db"},
+    {"name": "AWS 聚焦", "icon": "W", "description": "Bedrock、SageMaker、AWS AI 服务", "color": "#ff9500"},
+    {"name": "行业动态", "icon": "I", "description": "企业落地、应用案例、市场趋势", "color": "#27ae60"},
+]
+
+
 def format_date(date_str):
     """统一格式化日期显示"""
     if not date_str:
@@ -244,27 +253,43 @@ class Mailer:
                     font-style: italic;
                 }}
 
-                /* 完整新闻 - 按来源分组 */
+                /* 完整新闻 - 按内容类型分组 */
                 .news-section {{
                     padding: 30px;
                 }}
-                .source-group {{
+                .category-group {{
                     margin-bottom: 32px;
                 }}
-                .source-group-title {{
+                .category-header {{
                     font-size: 1.2em;
                     color: #2c3e50;
                     margin-bottom: 16px;
                     padding-bottom: 8px;
-                    border-bottom: 2px solid #667eea;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                 }}
-                .source-group-title .count {{
+                .category-icon {{
+                    display: inline-block;
+                    width: 28px;
+                    height: 28px;
+                    line-height: 28px;
+                    text-align: center;
+                    border-radius: 6px;
+                    color: white;
+                    font-weight: bold;
+                    margin-right: 10px;
+                }}
+                .category-header .count {{
                     font-size: 0.85em;
                     color: #999;
                     font-weight: normal;
+                }}
+                .category-desc {{
+                    font-size: 0.85em;
+                    color: #666;
+                    margin-left: 38px;
+                    margin-bottom: 12px;
                 }}
 
                 /* 新闻卡片 */
@@ -408,14 +433,15 @@ class Mailer:
 
             html += "</div>"
 
-        # 完整新闻 - 按来源分组
+        # 完整新闻 - 按内容类型分组
         html += '<div class="news-section">'
         html += '<h2 style="margin-bottom:24px; color:#2c3e50;">完整新闻列表</h2>'
 
-        # 按来源分组
-        grouped_items = defaultdict(list)
+        # 按内容类型分组
+        grouped_by_category = defaultdict(list)
         for item in items:
-            grouped_items[item['source']].append(item)
+            category = item.get('category', '行业动态')
+            grouped_by_category[category].append(item)
 
         # 获取 TOP 新闻的 ID
         top_ids = set()
@@ -424,17 +450,30 @@ class Mailer:
                 if 'id' in top_item:
                     top_ids.add(top_item['id'])
 
-        # 按来源显示新闻
-        for source, source_items in sorted(grouped_items.items()):
+        # 按类型优先级顺序显示新闻
+        for cat_info in CONTENT_CATEGORIES:
+            cat_name = cat_info["name"]
+            cat_items = grouped_by_category.get(cat_name, [])
+
+            if not cat_items:
+                continue
+
+            # 类型内按评分排序
+            cat_items = sorted(cat_items, key=lambda x: x.get('ai_score', 0), reverse=True)
+
             html += f"""
-                <div class="source-group">
-                    <div class="source-group-title">
-                        <span>{source}</span>
-                        <span class="count">{len(source_items)} 条</span>
+                <div class="category-group">
+                    <div class="category-header" style="border-bottom: 2px solid {cat_info['color']};">
+                        <span>
+                            <span class="category-icon" style="background: {cat_info['color']};">{cat_info['icon']}</span>
+                            {cat_name}
+                        </span>
+                        <span class="count">{len(cat_items)} 条</span>
                     </div>
+                    <div class="category-desc">{cat_info['description']}</div>
             """
 
-            for item in source_items:
+            for item in cat_items:
                 is_top = item.get('id') in top_ids
                 card_class = "news-card top-item" if is_top else "news-card"
 
@@ -443,6 +482,10 @@ class Mailer:
                     meta_badges.append(f'<span class="score-badge">AI评分 {item["ai_score"]}</span>')
                 if is_top:
                     meta_badges.append('<span class="top-badge">TOP</span>')
+                # 添加来源标签
+                source = item.get('source', '')
+                if source:
+                    meta_badges.append(f'<span style="background:#f0f0f0; color:#666; padding:2px 8px; border-radius:3px; font-size:0.85em;">{source}</span>')
 
                 meta_html = ''.join(meta_badges) if meta_badges else ''
 
@@ -452,7 +495,6 @@ class Mailer:
                 summary_text = item['summary'][:250]
 
                 # 检查摘要和翻译是否相同（避免重复显示）
-                # 去除空格后比较前100个字符
                 summary_same = summary_zh and summary_text.replace(' ', '')[:100] == summary_zh.replace(' ', '')[:100]
 
                 # 格式化日期
@@ -477,13 +519,14 @@ class Mailer:
 
         html += "</div>"
 
-        # 页脚
+        # 页脚 - 统计类型数量
+        category_count = len([cat for cat in CONTENT_CATEGORIES if grouped_by_category.get(cat["name"])])
         html += f"""
                 <div class="footer">
                     <p>本邮件由 WhatsNew 自动生成</p>
                     {'<p>AI 分析由 AWS Bedrock Claude Sonnet 4.5 提供</p>' if ai_analysis else ''}
                     <p style="margin-top:8px; font-size:0.9em;">
-                        共 {len(grouped_items)} 个来源 · {len(items)} 条新闻
+                        共 {category_count} 个类型 · {len(items)} 条新闻
                     </p>
                 </div>
             </div>

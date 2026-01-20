@@ -377,6 +377,7 @@ class Crawler:
 
             new_items = []
             seen_urls = set()
+            cutoff = datetime.now() - timedelta(days=max_days)
 
             for a in soup.find_all('a', href=True):
                 href = a.get('href', '')
@@ -394,6 +395,19 @@ class Crawler:
                     if not title or len(title) < 10:
                         continue
 
+                    # 尝试从 URL 或标题中提取日期 (格式: YYYY-MM-DD)
+                    pub_date = ''
+                    date_match = re.search(r'(\d{4}-\d{2}-\d{2})', href + ' ' + title)
+                    if date_match:
+                        pub_date = date_match.group(1)
+                        # 检查日期是否在时间范围内
+                        try:
+                            item_date = datetime.strptime(pub_date, '%Y-%m-%d')
+                            if item_date < cutoff:
+                                continue  # 跳过过期内容
+                        except:
+                            pass
+
                     item_id = self._generate_id(full_url)
                     if self.storage.is_sent(item_id):
                         continue
@@ -403,7 +417,7 @@ class Crawler:
                         'title': title,
                         'link': full_url,
                         'summary': title,
-                        'published': '',
+                        'published': pub_date,
                         'source': source_name
                     }
 
