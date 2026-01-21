@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **E-commerce + AI Focus Mode**: New `ecom/` directory with dedicated config for e-commerce + AI content
+- **Key Companies Tracking**: Track specific companies (SHEIN, Amazon) across all news sources
+- **Company Aliases**: Broader matching with aliases (Amazon → aws, alexa, kindle, prime, etc.)
+- **Dual Instance Setup**: Separate `ai/` and `ecom/` directories with independent configs and data
+- **Google News RSS Sources**: Added Google News search for key companies as supplemental source
+- **E-commerce Content Categories**: 关键企业/电商+AI/技术深度/行业动态 for ecom emails
+- **30+ E-commerce Sources**: Shopify, eBay, Etsy, Walmart, Alibaba, Netflix, Spotify, etc.
+
+### Changed
+- Project restructured into `ai/` (original) and `ecom/` (new) directories
+- Crontab now runs both instances: ai at 06:00, ecom at 06:30 Beijing time
+- E-commerce filter requires BOTH ecommerce AND AI keywords (intersection, not union)
+- Email subject format: `WhatsNew [Ecom] [AI] - N 条新内容`
+
+### Fixed
+- **Key Company Filter Bug**: Google News results now require actual company mention in content
+- Previously, news from "Google News - Amazon AI" auto-passed without checking content
+- Now filters like "The best free AI courses..." are correctly excluded
+
+---
+
+## [1.2.0] - 2026-01-21
+
+### Added
 - **Content Categories Display**: News grouped by type (Agent专项/技术深度/AWS聚焦/行业动态)
 - **Source-based Forced Classification**: AWS sources → AWS聚焦, Agent frameworks → Agent专项
 - **Protected Sources**: Core sources (AWS, LangChain, LlamaIndex) skip AI filtering
