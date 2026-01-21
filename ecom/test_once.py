@@ -13,10 +13,13 @@ config = Config('config.yaml')
 # 初始化模块
 storage = Storage(config.get('data_file', 'data/sent_news.json'))
 keyword_filter = config.get('filter.keyword_filter', None)
-crawler = Crawler(storage, keyword_filter=keyword_filter)
+key_companies = config.get('key_companies', [])
+crawler = Crawler(storage, keyword_filter=keyword_filter, key_companies=key_companies)
 mailer = Mailer(config.email_config)
 
 print(f"关键词过滤: {keyword_filter or '未启用'}")
+if key_companies:
+    print(f"关键企业: {', '.join(key_companies)}")
 
 # 抓取新闻
 sources = config.sources
@@ -56,7 +59,11 @@ if new_items and ai_enabled and len(new_items) >= min_news:
 email_enabled = config.get('email.enabled', True)
 
 if new_items:
+    # 统计关键企业新闻
+    key_company_count = sum(1 for item in new_items if item.get('is_key_company', False))
     print(f"\n共发现 {len(new_items)} 条新内容")
+    if key_company_count > 0:
+        print(f"  其中关键企业新闻: {key_company_count} 条")
     subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
 
     if not email_enabled:

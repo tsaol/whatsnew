@@ -180,12 +180,15 @@ class NewsAnalyzerAgent:
             "Semantic Kernel Blog", "Anthropic News",
         }
 
-        # 准备新闻文本（只过滤非受保护来源）
+        # 准备新闻文本（只过滤非受保护来源和非关键企业）
         items_to_check = []
         protected_items = []
 
         for i, item in enumerate(news_items):
-            if item['source'] in protected_sources:
+            # 关键企业新闻不过滤
+            if item.get('is_key_company', False):
+                protected_items.append(i)
+            elif item['source'] in protected_sources:
                 protected_items.append(i)
             else:
                 items_to_check.append(i)
@@ -204,25 +207,24 @@ class NewsAnalyzerAgent:
         # 调用 LLM 判断相关性
         messages = [
             SystemMessage(content="""
-你是 AI/GenAI/Agentic AI 新闻过滤专家。严格筛选与这些核心主题相关的内容。
+你是电商+AI技术新闻过滤专家。筛选与电商和AI结合相关的内容。
 
 **必须保留的内容**：
-- GenAI/LLM：大模型、Prompt工程、RAG、Fine-tuning、模型推理
-- Agentic AI：AI Agent、自主代理、Multi-Agent、Agent框架（LangChain、AutoGPT等）
-- AI 基础设施：模型训练、部署、MLOps、向量数据库
-- 云服务 AI：AWS Bedrock、Azure OpenAI、GCP Vertex AI
-- AI 工具链：Hugging Face、LangChain、LlamaIndex、Agent开发工具
-- AI 研究：最新论文、算法创新、模型架构
+- 电商+AI：推荐系统、个性化、智能搜索、智能客服
+- 零售AI：需求预测、库存优化、供应链智能化
+- 电商技术：搜索排序、用户画像、转化优化
+- 视觉AI：商品识别、虚拟试穿、视觉搜索
+- 营销AI：广告定向、营销自动化、客户细分
+- 支付风控：欺诈检测、风险评估
 
 **严格过滤的内容**：
-- 通用软件开发（与AI无关的编程）
-- 纯前端/后端技术（无AI组件）
-- 游戏开发（除非涉及AI技术）
-- 硬件产品、消费电子
-- 购物促销、营销内容
-- 非技术新闻
+- 纯技术开发（与电商无关）
+- 纯AI研究（与电商应用无关）
+- 游戏、娱乐
+- 硬件产品
+- 纯营销促销（无技术内容）
 
-**判断标准**：如果新闻不明确涉及 AI、GenAI、Agent 或云AI服务，则过滤掉。
+**判断标准**：保留涉及电商/零售与AI/机器学习结合的内容。
 
 返回 JSON 格式：{"relevant_ids": ["0", "2", "5"], "filtered_ids": ["1", "3", "4"]}
 只返回JSON，不要其他文字。

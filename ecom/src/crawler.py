@@ -83,12 +83,33 @@ class Crawler:
         'valuation', 'funding round', 'series a', 'series b', 'series c',
     ]
 
-    def __init__(self, storage, keyword_filter=None):
+    def __init__(self, storage, keyword_filter=None, key_companies=None):
         self.storage = storage
-        self.keyword_filter = keyword_filter  # None = 不过滤, 'agent' = Agent相关
+        self.keyword_filter = keyword_filter  # None = 不过滤, 'agent' = Agent相关, 'ecommerce' = 电商+AI
+        self.key_companies = [c.lower() for c in (key_companies or [])]  # 关键企业列表
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
+
+    # 关键企业的别名/品牌映射
+    COMPANY_ALIASES = {
+        'amazon': ['amazon', 'aws', 'alexa', 'kindle', 'prime', 'aboutamazon'],
+        'shein': ['shein', 'she in', 'sheingroup'],
+    }
+
+    def _is_key_company_news(self, title, summary):
+        """检查内容是否与关键企业相关"""
+        if not self.key_companies:
+            return False
+        text = f"{title} {summary}".lower()
+
+        for company in self.key_companies:
+            # 获取该公司的所有别名
+            aliases = self.COMPANY_ALIASES.get(company, [company])
+            for alias in aliases:
+                if alias in text:
+                    return True
+        return False
 
     def _clean_html(self, text):
         """清理 HTML 标签和多余空白"""
@@ -140,7 +161,7 @@ class Crawler:
         return False
 
     def _is_ecommerce_related(self, title, summary):
-        """检查内容是否与电商 + AI 相关"""
+        """检查内容是否与电商 + AI 结合相关（必须同时包含两者）"""
         text = f"{title} {summary}".lower()
 
         # 先检查排除关键词
@@ -148,35 +169,48 @@ class Crawler:
             if keyword.lower() in text:
                 return False
 
-        # 检查电商关键词
-        for keyword in self.ECOMMERCE_KEYWORDS:
-            if keyword.lower() in text:
-                return True
-        return False
+        # AI 相关关键词
+        ai_keywords = [
+            'ai', 'artificial intelligence', 'machine learning', 'ml',
+            'deep learning', 'neural network', 'llm', 'large language model',
+            'gpt', 'chatbot', 'nlp', 'natural language',
+            'recommendation', 'recommender', 'personalization',
+            'predictive', 'prediction', 'forecast',
+            'computer vision', 'image recognition',
+            'automation', 'intelligent', 'smart',
+            '人工智能', '机器学习', '深度学习', '大模型', '智能',
+        ]
+
+        # 必须同时包含电商关键词 AND AI关键词
+        has_ecom = any(kw.lower() in text for kw in self.ECOMMERCE_KEYWORDS)
+        has_ai = any(kw.lower() in text for kw in ai_keywords)
+
+        return has_ecom and has_ai
 
     def _should_include(self, title, summary, source_name):
-        """判断是否应该包含这条新闻"""
+        """判断是否应该包含这条新闻，返回 (是否包含, 是否关键企业)"""
+        # 检查内容是否真的提到关键企业（必须在内容中出现，不能只看来源）
+        is_key_company = self._is_key_company_news(title, summary)
+        if is_key_company:
+            return True, True  # 包含，且标记为关键企业
+
         # 如果没有设置关键词过滤，包含所有
         if not self.keyword_filter:
-            return True
+            return True, False
 
         # Agent 相关源总是包含（仅限 agent 过滤模式）
         if self.keyword_filter == 'agent':
             agent_sources = ['LangChain', 'LlamaIndex', 'CrewAI', 'Semantic Kernel',
                             'Anthropic', 'Simon Willison', 'Latent Space']
             if any(s.lower() in source_name.lower() for s in agent_sources):
-                return True
-            return self._is_agent_related(title, summary)
+                return True, False
+            return self._is_agent_related(title, summary), False
 
-        # 电商相关源总是包含（仅限 ecommerce 过滤模式）
+        # 电商+AI 过滤：所有内容都必须同时包含电商和AI关键词
         if self.keyword_filter == 'ecommerce':
-            ecom_sources = ['Shopify', 'Amazon Science', 'eBay', 'Etsy', 'Walmart',
-                           'Alibaba', 'Retail Dive', 'Pinterest', 'Instacart']
-            if any(s.lower() in source_name.lower() for s in ecom_sources):
-                return True
-            return self._is_ecommerce_related(title, summary)
+            return self._is_ecommerce_related(title, summary), False
 
-        return True
+        return True, False
 
     def fetch_rss(self, url, source_name, max_items=5, max_days=2):
         """抓取RSS源"""
@@ -219,7 +253,8 @@ class Crawler:
                 summary = self._extract_summary(entry)
 
                 # 关键词过滤
-                if not self._should_include(title, summary, source_name):
+                should_include, is_key_company = self._should_include(title, summary, source_name)
+                if not should_include:
                     keyword_filtered += 1
                     continue
 
@@ -229,7 +264,8 @@ class Crawler:
                     'link': entry.get('link', ''),
                     'summary': summary,
                     'published': entry.get('published', ''),
-                    'source': source_name
+                    'source': source_name,
+                    'is_key_company': is_key_company  # 标记是否为关键企业新闻
                 }
 
                 new_items.append(item)
@@ -480,6 +516,144 @@ class Crawler:
             print(f"  抓取失败 {source_name}: {e}")
             return []
 
+    def fetch_web_shein(self, max_items=5, max_days=2):
+        """爬取 SHEIN 新闻"""
+        source_name = "SHEIN News"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            # 尝试 SHEIN 官方新闻页面
+            urls_to_try = [
+                'https://www.sheingroup.com/news/',
+                'https://www.sheingroup.com/newsroom/',
+            ]
+
+            new_items = []
+            for url in urls_to_try:
+                try:
+                    resp = requests.get(url, headers=self.headers, timeout=15)
+                    if resp.status_code != 200:
+                        continue
+
+                    soup = BeautifulSoup(resp.text, 'html.parser')
+
+                    # 找到所有新闻链接
+                    articles = soup.find_all('a', href=True)
+                    for a in articles:
+                        href = a.get('href', '')
+                        title = a.get_text(strip=True)
+
+                        if not title or len(title) < 10:
+                            continue
+
+                        # 构建完整 URL
+                        if href.startswith('/'):
+                            full_url = f"https://www.sheingroup.com{href}"
+                        elif href.startswith('http'):
+                            full_url = href
+                        else:
+                            continue
+
+                        item_id = self._generate_id(full_url)
+                        if self.storage.is_sent(item_id):
+                            continue
+
+                        item = {
+                            'id': item_id,
+                            'title': title,
+                            'link': full_url,
+                            'summary': title,  # 使用标题作为摘要
+                            'published': '',
+                            'source': source_name,
+                            'is_key_company': True  # 标记为关键企业
+                        }
+                        new_items.append(item)
+
+                        if len(new_items) >= max_items:
+                            break
+
+                    if new_items:
+                        break
+                except:
+                    continue
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
+    def fetch_web_amazon(self, max_items=5, max_days=2):
+        """爬取 Amazon 新闻"""
+        source_name = "Amazon News"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            resp = requests.get('https://www.aboutamazon.com/news',
+                              headers=self.headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            new_items = []
+
+            # 找到新闻文章链接
+            articles = soup.find_all('a', href=True)
+            seen_urls = set()
+
+            for a in articles:
+                href = a.get('href', '')
+
+                # 过滤新闻文章链接
+                if '/news/' not in href or href in seen_urls:
+                    continue
+                if href == '/news' or href == '/news/':
+                    continue
+
+                seen_urls.add(href)
+
+                # 构建完整 URL
+                if href.startswith('/'):
+                    full_url = f"https://www.aboutamazon.com{href}"
+                elif href.startswith('http'):
+                    full_url = href
+                else:
+                    continue
+
+                item_id = self._generate_id(full_url)
+                if self.storage.is_sent(item_id):
+                    continue
+
+                # 获取标题
+                title = a.get_text(strip=True)
+                if not title or len(title) < 10:
+                    # 尝试从子元素获取
+                    title_elem = a.find(['h2', 'h3', 'h4', 'span'])
+                    title = title_elem.get_text(strip=True) if title_elem else ''
+
+                if not title or len(title) < 10:
+                    continue
+
+                item = {
+                    'id': item_id,
+                    'title': title,
+                    'link': full_url,
+                    'summary': title,
+                    'published': '',
+                    'source': source_name,
+                    'is_key_company': True  # 标记为关键企业
+                }
+                new_items.append(item)
+
+                if len(new_items) >= max_items:
+                    break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
     def fetch_all(self, sources, max_items=5, max_days=2):
         """抓取所有新闻源"""
         all_items = []
@@ -508,6 +682,10 @@ class Crawler:
                     items = self.fetch_web_langchain(max_items, max_days)
                 elif web_func == 'llamaindex':
                     items = self.fetch_web_llamaindex(max_items, max_days)
+                elif web_func == 'shein':
+                    items = self.fetch_web_shein(max_items, max_days)
+                elif web_func == 'amazon':
+                    items = self.fetch_web_amazon(max_items, max_days)
                 else:
                     print(f"  未知的爬虫函数: {web_func}")
                     items = []

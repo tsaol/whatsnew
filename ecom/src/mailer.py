@@ -10,10 +10,10 @@ from dateutil import parser as date_parser
 
 # 内容分类定义（按优先级排序）
 CONTENT_CATEGORIES = [
-    {"name": "Agent 专项", "icon": "A", "description": "Agent 框架、MCP、Multi-Agent、Tool Use", "color": "#667eea"},
-    {"name": "技术深度", "icon": "T", "description": "LLM、RAG、模型优化、算法创新", "color": "#3498db"},
-    {"name": "AWS 聚焦", "icon": "W", "description": "Bedrock、SageMaker、AWS AI 服务", "color": "#ff9500"},
-    {"name": "行业动态", "icon": "I", "description": "企业落地、应用案例、市场趋势", "color": "#27ae60"},
+    {"name": "关键企业", "icon": "K", "description": "重点关注企业的最新动态", "color": "#e74c3c"},
+    {"name": "电商+AI", "icon": "E", "description": "电商与AI结合的技术应用", "color": "#667eea"},
+    {"name": "技术深度", "icon": "T", "description": "推荐系统、搜索排序、个性化", "color": "#3498db"},
+    {"name": "行业动态", "icon": "I", "description": "零售行业、市场趋势", "color": "#27ae60"},
 ]
 
 
@@ -440,8 +440,20 @@ class Mailer:
         # 按内容类型分组
         grouped_by_category = defaultdict(list)
         for item in items:
-            category = item.get('category', '行业动态')
-            grouped_by_category[category].append(item)
+            # 关键企业新闻优先分到"关键企业"分类
+            if item.get('is_key_company', False):
+                grouped_by_category['关键企业'].append(item)
+            else:
+                category = item.get('category', '行业动态')
+                # 映射旧分类名到新分类名
+                category_map = {
+                    'Agent 专项': '电商+AI',
+                    'AWS 聚焦': '电商+AI',
+                    '技术深度': '技术深度',
+                    '行业动态': '行业动态',
+                }
+                category = category_map.get(category, '行业动态')
+                grouped_by_category[category].append(item)
 
         # 获取 TOP 新闻的 ID
         top_ids = set()
