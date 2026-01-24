@@ -90,7 +90,7 @@ class Mailer:
 
         # 邮件主题
         ai_tag = " [AI]" if ai_analysis else ""
-        subject = f"AI 日报{ai_tag} - {len(items)} 条新内容 ({beijing_now.strftime('%Y-%m-%d %H:%M')})"
+        subject = f"电商日报{ai_tag} - {len(items)} 条新内容 ({beijing_now.strftime('%Y-%m-%d %H:%M')})"
 
         # 现代化样式设计
         html = f"""
@@ -531,7 +531,7 @@ class Mailer:
                 <!-- 头部 -->
                 <div class="header">
                     <div class="header-content">
-                        <h1>AI 日报</h1>
+                        <h1>电商日报</h1>
                         <div class="subtitle">{beijing_now.strftime('%Y年%m月%d日 %H:%M')} 北京时间</div>
                         <div class="stats">
                             <div class="stat-item">
