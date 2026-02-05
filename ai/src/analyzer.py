@@ -17,6 +17,17 @@ class AnalysisState(TypedDict):
     top_news: List[Dict]                            # TOP 新闻
     summary: str                                     # 最终总结
     metadata: Dict                                   # 元数据
+    commentary: str                                  # 开篇评论
+    clusters: List[Dict]                            # 热点聚类
+    extracted_data: List[Dict]                      # 提取的关键数据
+    # 新增字段
+    news_labels: Dict[str, str]                     # 新闻标签 {news_id: "重磅"|"独家"|"融资"...}
+    paper_analysis: List[Dict]                      # 论文深度分析
+    spotlight: Dict                                  # 深度专题
+    market_pulse: Dict                              # 市场脉搏（情绪+数据）
+    weekly_outlook: str                             # 下周展望
+    one_liners: Dict[str, str]                      # 一句话速读 {news_id: "精华"}
+    action_items: List[Dict]                        # 行动建议
 
 
 class NewsAnalyzerAgent:
@@ -40,27 +51,37 @@ class NewsAnalyzerAgent:
         self.workflow = self._build_workflow()
 
     def _build_workflow(self) -> StateGraph:
-        """构建 LangGraph 工作流"""
+        """构建 LangGraph 工作流 - 优化版 (12节点)"""
         workflow = StateGraph(AnalysisState)
 
-        # 添加节点
+        # 添加节点 (优化: 删除 market_pulse, extract_data; 合并 label_news + one_liners)
         workflow.add_node("categorize", self._categorize_news)
         workflow.add_node("filter", self._filter_news)
         workflow.add_node("score", self._score_news)
-        workflow.add_node("enhance", self._enhance_summary)
-        workflow.add_node("translate", self._translate_news)
+        workflow.add_node("enhance_translate", self._enhance_and_translate)  # 合并节点
+        workflow.add_node("label_and_oneliner", self._label_and_oneliner)    # 合并节点
         workflow.add_node("find_trends", self._find_trends)
+        workflow.add_node("cluster_news", self._cluster_news)
+        workflow.add_node("analyze_papers", self._analyze_papers)
         workflow.add_node("summarize", self._summarize)
+        workflow.add_node("spotlight", self._generate_spotlight)
+        workflow.add_node("action_items", self._generate_action_items)
+        workflow.add_node("commentary", self._generate_commentary)
 
-        # 定义边（流程）
+        # 定义边（流程）- 12节点工作流
         workflow.set_entry_point("categorize")
         workflow.add_edge("categorize", "filter")
         workflow.add_edge("filter", "score")
-        workflow.add_edge("score", "enhance")
-        workflow.add_edge("enhance", "translate")
-        workflow.add_edge("translate", "find_trends")
-        workflow.add_edge("find_trends", "summarize")
-        workflow.add_edge("summarize", END)
+        workflow.add_edge("score", "enhance_translate")
+        workflow.add_edge("enhance_translate", "label_and_oneliner")
+        workflow.add_edge("label_and_oneliner", "find_trends")
+        workflow.add_edge("find_trends", "cluster_news")
+        workflow.add_edge("cluster_news", "analyze_papers")
+        workflow.add_edge("analyze_papers", "summarize")
+        workflow.add_edge("summarize", "spotlight")
+        workflow.add_edge("spotlight", "action_items")
+        workflow.add_edge("action_items", "commentary")
+        workflow.add_edge("commentary", END)
 
         return workflow.compile()
 
@@ -334,24 +355,26 @@ class NewsAnalyzerAgent:
 9-10分 [必看]：
 - Agent/Agentic AI 框架重大更新（LangChain、LlamaIndex、CrewAI、AutoGen）
 - MCP (Model Context Protocol) 相关进展
-- Claude/GPT 的 Agent 能力更新
+- Claude/GPT 的 Agent 能力重大更新
 - AWS Bedrock Agents 新功能
-- 多 Agent 协作、Agent 安全的突破性研究
+- 重大融资（>$500M）或重要公司收购
 
 7-8分 [重要]：
 - RAG 技术重要进展
 - Tool Use / Function Calling 更新
 - Agent 开发工具和框架更新
-- LLM 推理优化（与 Agent 相关）
+- LLM 推理优化、新模型发布
 - 企业级 Agent 落地案例
+- 大额融资（$100M-$500M）
 
 5-6分 [一般]：
-- 通用 LLM 模型更新（非 Agent 相关）
+- 通用 LLM 模型更新
 - 云服务常规更新
 - 通用 AI 研究进展
+- 中等融资（$20M-$100M）
 
 3-4分 [低价值]：
-- 公司新闻、人事变动、融资
+- 人事变动、小额融资（<$20M）
 - 非技术内容
 - 过于宽泛的综述
 
@@ -629,6 +652,155 @@ reason 字段必填，说明评分理由（15-30字）。
 
         return {"scored": translated_news}
 
+    def _enhance_and_translate(self, state: AnalysisState) -> Dict:
+        """合并节点: 增强摘要 + 翻译（减少 LLM 调用）"""
+        print("  [Agent] 正在增强摘要并翻译...")
+
+        scored = state.get("scored", [])
+        if not scored:
+            return {"scored": []}
+
+        # 检测是否需要翻译
+        def needs_translation(text):
+            if not text:
+                return False
+            english_chars = sum(1 for c in text if c.isascii() and c.isalpha())
+            total_chars = len([c for c in text if c.isalpha()])
+            return total_chars > 0 and english_chars / total_chars > 0.5
+
+        # 准备待处理的新闻
+        to_process = []
+        for idx, item in enumerate(scored):
+            summary = item.get('summary', '')
+            title = item.get('title', '')
+            title_needs_trans = needs_translation(title)
+            summary_needs_trans = needs_translation(summary)
+            needs_enhance = len(summary) < 50 or summary == title
+
+            to_process.append({
+                'idx': idx,
+                'title': title,
+                'summary': summary[:300],
+                'source': item.get('source', ''),
+                'title_needs_trans': title_needs_trans,
+                'summary_needs_trans': summary_needs_trans,
+                'needs_enhance': needs_enhance
+            })
+
+        # 分批处理
+        batch_size = 10
+        processed_news = [item.copy() for item in scored]
+
+        for batch_start in range(0, len(to_process), batch_size):
+            batch = to_process[batch_start:batch_start + batch_size]
+            print(f"    处理第 {batch_start+1}-{batch_start+len(batch)} 条...")
+
+            news_text = "\n\n".join([
+                f"ID: {item['idx']}\n标题: {item['title']}\n摘要: {item['summary']}\n来源: {item['source']}"
+                for item in batch
+            ])
+
+            messages = [
+                SystemMessage(content="""你是科技新闻翻译专家。对每条新闻翻译标题和摘要。
+
+**术语处理规则**：
+- 保留英文: LangChain, Claude, GPT, Gemini, Bedrock, RAG, MCP, API, SDK
+- 翻译为中文: Agent→智能体, Prompt→提示词, Fine-tune→微调, Embedding→嵌入
+- 公司名保留英文: OpenAI, Anthropic, Google, Meta, AWS
+
+**摘要要求**：
+- 50-80字，信息密集
+- 如果原摘要太短或重复标题，基于标题扩写
+
+返回 JSON 数组:
+[{"id": "0", "title_zh": "中文标题", "summary_zh": "中文摘要"}, ...]
+只返回JSON数组。"""),
+                HumanMessage(content=f"处理这些新闻:\n\n{news_text}")
+            ]
+
+            try:
+                response = self.llm.invoke(messages)
+                content = response.content.strip()
+                start_idx = content.find('[')
+                end_idx = content.rfind(']')
+
+                if start_idx != -1 and end_idx != -1:
+                    results = json.loads(content[start_idx:end_idx+1])
+                    for item in results:
+                        idx = int(item['id'])
+                        if idx < len(processed_news):
+                            if item.get('title_zh'):
+                                processed_news[idx]['title_zh'] = item['title_zh']
+                            if item.get('summary_zh'):
+                                processed_news[idx]['summary_zh'] = item['summary_zh']
+                                # 如果原摘要太短，也更新原摘要
+                                if len(processed_news[idx].get('summary', '')) < 50:
+                                    processed_news[idx]['summary'] = item['summary_zh']
+                    print(f"      成功处理 {len(results)} 条")
+            except Exception as e:
+                print(f"      批次处理失败: {e}")
+                continue
+
+        return {"scored": processed_news}
+
+    def _label_and_oneliner(self, state: AnalysisState) -> Dict:
+        """合并节点: 打标签 + 生成一句话速读"""
+        print("  [Agent] 正在打标签并生成速读...")
+
+        scored = state.get("scored", [])
+        if not scored:
+            return {"news_labels": {}, "one_liners": {}}
+
+        # 准备新闻文本
+        news_text = "\n".join([
+            f"ID: {i} | {item.get('title_zh', item['title'])} | 来源: {item.get('source', '')} | 评分: {item.get('ai_score', 5)}"
+            for i, item in enumerate(scored[:30])
+        ])
+
+        messages = [
+            SystemMessage(content="""你是新闻编辑专家。为每条新闻完成两个任务：
+
+**任务1: 打标签**（只给20-30%的重要新闻打标签，宁缺毋滥）
+可用标签(仅5种):
+- 重磅: 重大事件、里程碑发布、行业变革
+- 融资: 融资、估值、收购（金额>$50M才标）
+- 发布: 新产品、新版本、新功能
+- 开源: 开源项目、代码发布
+- 研究: 学术论文、技术研究
+
+**任务2: 一句话速读**（必须，每条都要）
+- 10-15字，提炼核心价值，不要重复标题
+- 用动词开头，有冲击力
+- 示例: "Agent开发效率提升3倍"、"超OpenAI成最贵独角兽"、"文档解析准确率破95%"
+
+返回 JSON:
+{
+  "labels": {"0": "重磅", "5": "融资"},
+  "oneliners": {"0": "一句话速读", "1": "一句话速读", ...}
+}
+只返回JSON。"""),
+            HumanMessage(content=f"处理这些新闻:\n\n{news_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+
+            if start_idx != -1 and end_idx != -1:
+                result = json.loads(content[start_idx:end_idx+1])
+                news_labels = result.get('labels', {})
+                one_liners = result.get('oneliners', {})
+            else:
+                news_labels, one_liners = {}, {}
+        except Exception as e:
+            print(f"    处理失败: {e}")
+            news_labels, one_liners = {}, {}
+
+        print(f"    标记 {len(news_labels)} 条，生成 {len(one_liners)} 条速读")
+        return {"news_labels": news_labels, "one_liners": one_liners}
+
     def _find_trends(self, state: AnalysisState) -> Dict:
         """节点6: 识别趋势 - 聚焦 Agentic AI"""
         print("  [Agent] 正在识别趋势...")
@@ -646,30 +818,26 @@ reason 字段必填，说明评分理由（15-30字）。
 
         # 调用 LLM 识别趋势
         messages = [
-            SystemMessage(content="""
-你是 Agentic AI 趋势分析专家。基于今日新闻，识别 2-4 个与 Agent/Agentic AI 相关的趋势。
+            SystemMessage(content="""你是 AI 行业趋势分析专家。基于今日新闻，识别 2-4 个值得关注的趋势。
 
-**聚焦方向**：
-- Agent 框架演进（LangChain、LlamaIndex、CrewAI 等）
-- Multi-Agent 协作和编排
-- Agent 安全和可靠性
-- Tool Use / MCP 生态
-- RAG 和知识检索
-- Agent 在企业的落地应用
+**可关注方向**（不限于此）：
+- Agent/Agentic AI: 框架、Multi-Agent、MCP、Tool Use
+- LLM 进展: 新模型、推理优化、长上下文
+- 多模态: 图像、视频、语音
+- AI 基础设施: 云服务、部署、MLOps
+- 行业应用: 代码生成、企业落地
 
 **要求**：
-- 每个趋势 8-15 字
-- 必须与 Agent/Agentic AI 相关
-- 具体、有洞察，不要泛泛而谈
-- 如果今日新闻没有明显 Agent 趋势，返回空数组 []
+- 每个趋势 10-18 字，具体有洞察
+- 至少返回 2 个趋势（即使不明显也要提炼）
+- 优先 Agent 相关，但不强制
 
 示例：
-["Agent安全沙箱机制成熟", "文档处理Agent能力提升", "MCP生态快速扩展"]
+["MCP协议获主流框架支持", "多模态Agent进入实用阶段", "代码生成工具竞争白热化"]
 
 返回 JSON 格式: ["趋势1", "趋势2", ...]
-只返回JSON数组，不要其他文字。如果没有明显趋势，返回 []。
-            """),
-            HumanMessage(content=f"基于这些新闻识别 Agentic AI 趋势:\n\n{news_text}")
+只返回JSON数组。"""),
+            HumanMessage(content=f"基于这些新闻识别 AI 趋势:\n\n{news_text}")
         ]
 
         response = self.llm.invoke(messages)
@@ -754,6 +922,543 @@ TOP 5 新闻:
             }
         }
 
+    def _label_news(self, state: AnalysisState) -> Dict:
+        """节点: 为新闻打标签（重磅/独家/融资等）"""
+        print("  [Agent] 正在为新闻打标签...")
+
+        scored = state.get("scored", [])
+        if not scored:
+            return {"news_labels": {}}
+
+        # 准备新闻文本
+        news_text = "\n".join([
+            f"ID: {i} | 标题: {item['title']} | 来源: {item.get('source', '')} | 评分: {item.get('ai_score', 5)}"
+            for i, item in enumerate(scored[:30])
+        ])
+
+        messages = [
+            SystemMessage(content="""
+你是新闻编辑专家，为新闻打上醒目标签。
+
+**可用标签**（只能选一个）：
+- 重磅: 行业重大事件、里程碑式发布、影响深远
+- 独家: 首发消息、独特视角、稀缺信息
+- 融资: 融资、估值、收购、IPO相关
+- 发布: 新产品、新版本、新功能发布
+- 开源: 开源项目、代码发布
+- 研究: 学术论文、研究报告
+- 警示: 安全问题、风险警告
+- 趋势: 行业趋势、市场变化
+
+**规则**：
+- 只给最值得标注的新闻打标签（约30-50%）
+- 评分7+的新闻优先考虑"重磅"或"独家"
+- 不是每条都需要标签
+
+返回 JSON: {"0": "重磅", "3": "融资", "5": "开源", ...}
+只返回JSON，没有标签的新闻不要包含。
+            """),
+            HumanMessage(content=f"为这些新闻打标签:\n\n{news_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                news_labels = json.loads(content[start_idx:end_idx+1])
+            else:
+                news_labels = {}
+        except Exception as e:
+            print(f"    标签生成失败: {e}")
+            news_labels = {}
+
+        print(f"    标记 {len(news_labels)} 条新闻")
+        return {"news_labels": news_labels}
+
+    def _analyze_papers(self, state: AnalysisState) -> Dict:
+        """节点: 深度分析学术论文"""
+        print("  [Agent] 正在分析学术论文...")
+
+        scored = state.get("scored", [])
+        # 筛选论文（来源包含 arXiv 或标题包含论文特征）
+        papers = [item for item in scored if
+                  'arxiv' in item.get('source', '').lower() or
+                  'arxiv' in item.get('link', '').lower() or
+                  'paper' in item.get('title', '').lower()]
+
+        if not papers:
+            print("    未发现论文")
+            return {"paper_analysis": []}
+
+        # 准备论文文本
+        paper_text = "\n\n".join([
+            f"ID: {i}\n标题: {p['title']}\n摘要: {p.get('summary', '')[:300]}\n链接: {p.get('link', '')}"
+            for i, p in enumerate(papers[:10])
+        ])
+
+        messages = [
+            SystemMessage(content="""你是AI研究专家，为工程师解读学术论文。
+
+为每篇论文生成：
+1. title_zh: 中文标题
+2. domain: 领域(Agent/RAG/LLM/多模态/安全/其他)
+3. difficulty: 难度(入门/进阶/专家)
+4. contribution: 核心贡献（1句话，25字内）
+5. takeaway: 工程师可以做什么（具体行动，如"可用于优化RAG召回"）
+
+返回 JSON 数组:
+[
+  {
+    "id": "0",
+    "title_zh": "中文标题",
+    "domain": "Agent",
+    "difficulty": "进阶",
+    "contribution": "提出了XXX方法解决YYY问题",
+    "takeaway": "可用于优化多Agent协作的通信效率"
+  }
+]
+只返回JSON数组。"""),
+            HumanMessage(content=f"分析这些论文:\n\n{paper_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+            if start_idx != -1 and end_idx != -1:
+                analysis = json.loads(content[start_idx:end_idx+1])
+                # 合并原始论文数据
+                for item in analysis:
+                    idx = int(item['id'])
+                    if idx < len(papers):
+                        item['original'] = papers[idx]
+            else:
+                analysis = []
+        except Exception as e:
+            print(f"    论文分析失败: {e}")
+            analysis = []
+
+        print(f"    分析 {len(analysis)} 篇论文")
+        return {"paper_analysis": analysis}
+
+    def _generate_spotlight(self, state: AnalysisState) -> Dict:
+        """节点: 生成深度专题报道"""
+        print("  [Agent] 正在生成深度专题...")
+
+        clusters = state.get("clusters", [])
+        top_news = state.get("top_news", [])
+        scored = state.get("scored", [])
+
+        if not clusters and not top_news:
+            return {"spotlight": {}}
+
+        # 选择最热门的主题作为专题
+        context = ""
+        if clusters:
+            top_cluster = clusters[0]
+            context = f"热点专题: {top_cluster.get('topic', '')}\n相关新闻: {len(top_cluster.get('news', []))}条"
+        if top_news:
+            context += f"\n\nTOP新闻:\n" + "\n".join([
+                f"- {n['title']}" for n in top_news[:3]
+            ])
+
+        messages = [
+            SystemMessage(content="""你是深度报道专家，为本期最热门话题生成专题报道。
+
+返回 JSON:
+{
+  "title": "专题标题（15-25字，有吸引力）",
+  "summary": "核心内容概述（80-120字，说明是什么、为什么重要、有什么影响）",
+  "key_points": ["要点1（15-20字）", "要点2", "要点3"]
+}
+只返回JSON。"""),
+            HumanMessage(content=f"基于以下内容生成深度专题:\n\n{context}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                spotlight = json.loads(content[start_idx:end_idx+1])
+            else:
+                spotlight = {}
+        except Exception as e:
+            print(f"    专题生成失败: {e}")
+            spotlight = {}
+
+        return {"spotlight": spotlight}
+
+    def _analyze_market_pulse(self, state: AnalysisState) -> Dict:
+        """节点: 分析市场脉搏（情绪+关键数据）"""
+        print("  [Agent] 正在分析市场脉搏...")
+
+        scored = state.get("scored", [])
+        extracted_data = state.get("extracted_data", [])
+        trends = state.get("trends", [])
+
+        context = f"""
+新闻数量: {len(scored)}
+识别趋势: {', '.join(trends) if trends else '无'}
+提取数据: {len(extracted_data)}条
+"""
+        # 添加新闻标题
+        if scored:
+            context += "\n主要新闻:\n" + "\n".join([
+                f"- {item['title']}" for item in scored[:15]
+            ])
+
+        messages = [
+            SystemMessage(content="""
+你是市场分析专家，分析AI行业的市场脉搏。
+
+**分析维度**：
+1. 市场情绪（乐观/中性/谨慎/悲观）+ 情绪指数(0-100)
+2. 热度领域Top3
+3. 关键信号（2-3个值得关注的信号）
+4. 风险提示（如果有的话）
+
+返回 JSON:
+{
+  "sentiment": "乐观",
+  "sentiment_score": 75,
+  "sentiment_reason": "原因说明(20-30字)",
+  "hot_areas": ["领域1", "领域2", "领域3"],
+  "key_signals": [
+    {"signal": "信号描述", "type": "positive|negative|neutral"}
+  ],
+  "risk_alerts": ["风险1"]
+}
+只返回JSON。
+            """),
+            HumanMessage(content=f"分析市场脉搏:\n\n{context}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                market_pulse = json.loads(content[start_idx:end_idx+1])
+            else:
+                market_pulse = {}
+        except Exception as e:
+            print(f"    市场分析失败: {e}")
+            market_pulse = {}
+
+        return {"market_pulse": market_pulse}
+
+    def _generate_one_liners(self, state: AnalysisState) -> Dict:
+        """节点: 生成一句话速读"""
+        print("  [Agent] 正在生成一句话速读...")
+
+        scored = state.get("scored", [])
+        if not scored:
+            return {"one_liners": {}}
+
+        # 准备新闻文本
+        news_text = "\n".join([
+            f"ID: {i} | {item['title']}"
+            for i, item in enumerate(scored[:30])
+        ])
+
+        messages = [
+            SystemMessage(content="""
+你是新闻精华提炼专家。为每条新闻生成一句话速读。
+
+**要求**：
+- 每条精华控制在10-15个中文字符
+- 提炼核心价值/影响/结论
+- 使用动词开头，有冲击力
+- 不要重复标题，要提炼本质
+
+**示例**：
+- "OpenAI发布Codex桌面版" → "编程Agent进入桌面时代"
+- "Anthropic估值3500亿" → "超OpenAI成最贵AI独角兽"
+- "LangChain 0.3发布" → "Agent开发体验大幅提升"
+- "Claude支持MCP协议" → "工具调用标准化迈出关键步"
+
+返回 JSON: {"0": "一句话精华", "1": "一句话精华", ...}
+为所有新闻生成精华，只返回JSON。
+            """),
+            HumanMessage(content=f"为这些新闻生成一句话速读:\n\n{news_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                one_liners = json.loads(content[start_idx:end_idx+1])
+            else:
+                one_liners = {}
+        except Exception as e:
+            print(f"    一句话速读生成失败: {e}")
+            one_liners = {}
+
+        print(f"    生成 {len(one_liners)} 条速读")
+        return {"one_liners": one_liners}
+
+    def _generate_action_items(self, state: AnalysisState) -> Dict:
+        """节点: 生成行动建议"""
+        print("  [Agent] 正在生成行动建议...")
+
+        top_news = state.get("top_news", [])
+        trends = state.get("trends", [])
+        scored = state.get("scored", [])
+
+        if not top_news and not scored:
+            return {"action_items": []}
+
+        # 准备上下文
+        context = f"""
+今日趋势: {', '.join(trends) if trends else '无明显趋势'}
+
+TOP 新闻:
+{chr(10).join([f'- {n["title"]}' for n in top_news[:10]])}
+
+其他重要新闻:
+{chr(10).join([f'- {n["title"]}' for n in scored[:10] if n.get('ai_score', 0) >= 6])}
+        """
+
+        messages = [
+            SystemMessage(content="""你是技术战略顾问，为技术决策者生成可执行的行动建议。
+
+**建议类型**：
+- 试用: 值得动手试用的工具/产品
+- 评估: 需要团队评估的技术方案
+- 关注: 值得持续跟踪的趋势
+- 学习: 值得深入学习的技术概念
+
+**要求**：
+- 生成 3-4 条建议，必须具体可执行
+- action 字段要包含具体动作，如"pip install xxx"、"阅读官方文档"、"在测试环境部署"
+
+**示例**：
+{"type": "试用", "title": "体验 Claude MCP 协议", "reason": "Anthropic 开放工具调用标准，可能成为行业规范", "action": "安装 claude-mcp-sdk，跑通官方 demo", "priority": "high"}
+{"type": "评估", "title": "评估 LangGraph 替代方案", "reason": "新版重构了状态管理，可能简化现有架构", "action": "在 staging 环境对比测试，产出评估报告", "priority": "medium"}
+
+返回 JSON 数组，只返回JSON。"""),
+            HumanMessage(content=f"基于以下内容生成行动建议:\n\n{context}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            content = response.content.strip()
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+            if start_idx != -1 and end_idx != -1:
+                action_items = json.loads(content[start_idx:end_idx+1])
+            else:
+                action_items = []
+        except Exception as e:
+            print(f"    行动建议生成失败: {e}")
+            action_items = []
+
+        print(f"    生成 {len(action_items)} 条行动建议")
+        return {"action_items": action_items}
+
+    def _generate_commentary(self, state: AnalysisState) -> Dict:
+        """节点8: 生成开篇评论 - 趋势解读"""
+        print("  [Agent] 正在生成开篇评论...")
+
+        top_news = state.get("top_news", [])
+        trends = state.get("trends", [])
+        summary = state.get("summary", "")
+
+        if not top_news:
+            return {"commentary": ""}
+
+        # 准备上下文
+        context = f"""
+今日趋势:
+{chr(10).join(f'- {t}' for t in trends) if trends else '无明显趋势'}
+
+TOP 新闻:
+{chr(10).join(f'{i+1}. {n["title"]}' for i, n in enumerate(top_news[:5]))}
+
+要点总结:
+{summary}
+        """
+
+        # 调用 LLM 生成评论
+        messages = [
+            SystemMessage(content="""
+你是资深 AI 行业分析师，为技术专家撰写每日新闻开篇评论。
+
+**写作要求**：
+- 150-250 字
+- 专业、有洞见、不废话
+- 突出最重要的 1-2 个事件或趋势
+- 给出技术或战略层面的解读
+- 面向技术决策者，语气专业但不枯燥
+- 可以适当加入对未来影响的判断
+
+**格式**：
+直接输出评论文本，不需要标题或开头语。
+
+示例风格：
+"本周最值得关注的是 LangChain 0.2 的发布，这次更新彻底重构了 Agent 执行引擎，
+将 Tool 调用延迟降低了 40%。更重要的是，新增的 Agent Memory 系统支持跨会话持久化，
+这解决了长期困扰开发者的状态管理难题。结合 Anthropic 同期发布的 Claude 3.5 Opus，
+我们可以预见企业级 Agent 应用将在今年下半年迎来一波部署高峰。"
+            """),
+            HumanMessage(content=f"基于以下分析生成开篇评论:\n\n{context}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            commentary = response.content.strip()
+        except Exception as e:
+            print(f"    评论生成失败: {e}")
+            commentary = ""
+
+        return {"commentary": commentary}
+
+    def _cluster_news(self, state: AnalysisState) -> Dict:
+        """节点: 热点聚类 - 识别相关新闻组"""
+        print("  [Agent] 正在进行热点聚类...")
+
+        scored = state.get("scored", [])
+
+        if len(scored) < 3:
+            return {"clusters": []}
+
+        # 准备新闻列表
+        news_text = "\n".join([
+            f"ID: {i} | {item['title']} | {item.get('source', '')}"
+            for i, item in enumerate(scored[:20])
+        ])
+
+        # 调用 LLM 进行聚类
+        messages = [
+            SystemMessage(content="""
+你是新闻聚类专家。将相关新闻分组，识别 2-5 个热点专题。
+
+**聚类原则**：
+- 同一事件的不同报道归为一组
+- 同一技术主题的多篇内容归为一组
+- 每个专题至少包含 2 条新闻
+- 专题名称 8-15 字，概括核心主题
+- 如果新闻关联性不强，可以返回较少或空的聚类
+
+**返回格式** (JSON):
+[
+  {
+    "topic": "专题名称",
+    "news_ids": ["0", "3", "5"],
+    "summary": "一句话描述这个专题的核心内容(20-30字)"
+  }
+]
+
+只返回JSON数组。如果没有明显的聚类，返回 []。
+            """),
+            HumanMessage(content=f"对这些新闻进行热点聚类:\n\n{news_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+
+            content = response.content.strip()
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx+1]
+                clusters = json.loads(json_str)
+
+                # 丰富聚类数据，添加新闻详情
+                for cluster in clusters:
+                    cluster['news'] = []
+                    for news_id in cluster.get('news_ids', []):
+                        idx = int(news_id)
+                        if idx < len(scored):
+                            cluster['news'].append({
+                                'title': scored[idx].get('title', ''),
+                                'title_zh': scored[idx].get('title_zh', ''),
+                                'link': scored[idx].get('link', ''),
+                                'source': scored[idx].get('source', '')
+                            })
+            else:
+                clusters = []
+
+        except Exception as e:
+            print(f"    聚类失败: {e}")
+            clusters = []
+
+        print(f"    识别 {len(clusters)} 个热点专题")
+        return {"clusters": clusters}
+
+    def _extract_data(self, state: AnalysisState) -> Dict:
+        """节点: 提取关键数据 - 融资金额、估值、用户数等"""
+        print("  [Agent] 正在提取关键数据...")
+
+        scored = state.get("scored", [])
+
+        if not scored:
+            return {"extracted_data": []}
+
+        # 准备新闻文本
+        news_text = "\n\n".join([
+            f"ID: {i}\n标题: {item['title']}\n摘要: {item['summary'][:200]}"
+            for i, item in enumerate(scored[:15])
+        ])
+
+        # 调用 LLM 提取数据
+        messages = [
+            SystemMessage(content="""
+你是数据提取专家。从新闻中提取关键数据指标。
+
+**提取类型**：
+- 融资金额 (funding): "$100M", "1亿美元"
+- 估值 (valuation): "$10B", "100亿估值"
+- 用户/客户数 (users): "100万用户", "500家企业客户"
+- 性能指标 (performance): "提升50%", "延迟降低3x"
+- 模型参数 (model): "70B参数", "128K上下文"
+
+**返回格式** (JSON):
+[
+  {
+    "news_id": "0",
+    "company": "公司/产品名",
+    "metric_type": "funding|valuation|users|performance|model",
+    "value": "具体数值",
+    "context": "简短说明(10-20字)"
+  }
+]
+
+只提取有明确数值的数据，不要推测。如果没有数据，返回 []。
+只返回JSON数组。
+            """),
+            HumanMessage(content=f"从这些新闻中提取关键数据:\n\n{news_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+
+            content = response.content.strip()
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx+1]
+                extracted_data = json.loads(json_str)
+            else:
+                extracted_data = []
+
+        except Exception as e:
+            print(f"    数据提取失败: {e}")
+            extracted_data = []
+
+        print(f"    提取 {len(extracted_data)} 条关键数据")
+        return {"extracted_data": extracted_data}
+
     def analyze(self, news_items: List[Dict]) -> Dict:
         """执行完整的分析流程"""
         print(f"\n[NewsAnalyzerAgent] 开始分析 {len(news_items)} 条新闻...")
@@ -766,7 +1471,17 @@ TOP 5 新闻:
             "trends": [],
             "top_news": [],
             "summary": "",
-            "metadata": {}
+            "metadata": {},
+            "commentary": "",
+            "clusters": [],
+            "extracted_data": [],
+            "news_labels": {},
+            "paper_analysis": [],
+            "spotlight": {},
+            "market_pulse": {},
+            "weekly_outlook": "",
+            "one_liners": {},
+            "action_items": []
         }
 
         # 执行工作流
@@ -774,14 +1489,128 @@ TOP 5 新闻:
 
         print("[NewsAnalyzerAgent] 分析完成！\n")
 
+        # 将标签和一句话速读合并到新闻数据中
+        scored_with_labels = result.get("scored", [])
+        news_labels = result.get("news_labels", {})
+        one_liners = result.get("one_liners", {})
+        for i, item in enumerate(scored_with_labels):
+            if str(i) in news_labels:
+                item['label'] = news_labels[str(i)]
+            if str(i) in one_liners:
+                item['one_liner'] = one_liners[str(i)]
+
         return {
             "summary": result["summary"],
             "trends": result["trends"],
             "top_news": result["top_news"],
-            "translated_items": result.get("scored", []),  # scored 包含翻译后的新闻
+            "translated_items": scored_with_labels,
             "categorized": result["categorized"],
-            "metadata": result["metadata"]
+            "metadata": result["metadata"],
+            "commentary": result.get("commentary", ""),
+            "clusters": result.get("clusters", []),
+            "extracted_data": result.get("extracted_data", []),
+            "news_labels": news_labels,
+            "paper_analysis": result.get("paper_analysis", []),
+            "spotlight": result.get("spotlight", {}),
+            "market_pulse": result.get("market_pulse", {}),
+            "one_liners": one_liners,
+            "action_items": result.get("action_items", [])
         }
+
+
+    def analyze_weekly(self, news_items: List[Dict], top_n: int = 10) -> Dict:
+        """执行周报分析流程"""
+        print(f"\n[NewsAnalyzerAgent] 开始周报分析 {len(news_items)} 条新闻...")
+
+        if not news_items:
+            return {
+                "summary": "",
+                "trends": [],
+                "top_news": [],
+                "highlights": [],
+                "weekly_stats": {}
+            }
+
+        # 准备周报新闻文本
+        news_text = "\n\n".join([
+            f"ID: {i}\n标题: {item.get('title', '')}\n来源: {item.get('source', '')}"
+            for i, item in enumerate(news_items[:50])  # 最多50条
+        ])
+
+        # 调用 LLM 生成周报分析
+        messages = [
+            SystemMessage(content=f"""
+你是资深 AI 行业分析师，为技术专家撰写周报。
+
+**任务**：基于本周新闻，生成周报分析。
+
+**返回 JSON 格式**:
+{{
+  "weekly_summary": "本周综述（150-250字，概括本周最重要的趋势和事件）",
+  "top_news_ids": ["0", "3", "5"],  // 本周最值得关注的 {top_n} 条新闻 ID
+  "top_reasons": ["理由1", "理由2", "理由3"],  // 对应的推荐理由
+  "trends": ["趋势1", "趋势2", "趋势3"],  // 本周 3-5 个关键趋势
+  "highlights": [
+    {{"title": "重点事件1", "impact": "影响说明"}},
+    {{"title": "重点事件2", "impact": "影响说明"}}
+  ],  // 2-4 个重点事件及其影响
+  "outlook": "下周展望（50-80字，预测下周可能的发展方向）"
+}}
+
+只返回 JSON，不要其他文字。
+            """),
+            HumanMessage(content=f"分析这些本周新闻并生成周报:\n\n{news_text}")
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+
+            content = response.content.strip()
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx+1]
+                analysis = json.loads(json_str)
+            else:
+                raise ValueError("未找到有效 JSON")
+
+            # 构建 top_news 列表
+            top_news = []
+            top_ids = analysis.get('top_news_ids', [])
+            top_reasons = analysis.get('top_reasons', [])
+            for i, news_id in enumerate(top_ids[:top_n]):
+                idx = int(news_id)
+                if idx < len(news_items):
+                    news_copy = news_items[idx].copy()
+                    if i < len(top_reasons):
+                        news_copy['weekly_reason'] = top_reasons[i]
+                    top_news.append(news_copy)
+
+            result = {
+                "summary": analysis.get('weekly_summary', ''),
+                "trends": analysis.get('trends', []),
+                "top_news": top_news,
+                "highlights": analysis.get('highlights', []),
+                "outlook": analysis.get('outlook', ''),
+                "weekly_stats": {
+                    "total_news": len(news_items),
+                    "analyzed_at": datetime.now().isoformat()
+                }
+            }
+
+        except Exception as e:
+            print(f"    周报分析失败: {e}")
+            result = {
+                "summary": "",
+                "trends": [],
+                "top_news": news_items[:top_n],
+                "highlights": [],
+                "weekly_stats": {"total_news": len(news_items)}
+            }
+
+        print("[NewsAnalyzerAgent] 周报分析完成！\n")
+        return result
 
 
 # 简化的工厂函数

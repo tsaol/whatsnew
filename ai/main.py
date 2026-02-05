@@ -1,11 +1,15 @@
 """WhatsNew - 新闻爬虫聚合平台主程序"""
 import time
 import schedule
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.config import Config
 from src.storage import Storage
 from src.crawler import Crawler
 from src.mailer import Mailer
+
+
+# 北京时区
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 
 def run_task():
@@ -76,34 +80,149 @@ def run_task():
     print(f"{separator}\n")
 
 
+def run_weekly_task():
+    """执行周报任务"""
+    separator = "=" * 50
+    print(f"\n{separator}")
+    print(f"开始执行周报任务...")
+    print(separator)
+
+    # 加载配置
+    config = Config('config.yaml')
+
+    # 检查周报是否启用
+    weekly_enabled = config.get('weekly.enabled', False)
+    if not weekly_enabled:
+        print("周报功能未启用，跳过")
+        return
+
+    # 初始化模块
+    storage = Storage(config.get('data_file', 'data/sent_news.json'))
+    mailer = Mailer(config.email_config)
+
+    # 获取本周新闻
+    lookback_days = config.get('weekly.lookback_days', 7)
+    week_news = storage.get_week_news(days=lookback_days)
+
+    if not week_news:
+        print("本周没有新闻，跳过周报生成")
+        return
+
+    print(f"本周共有 {len(week_news)} 条新闻")
+
+    # 计算周期
+    beijing_now = datetime.now(BEIJING_TZ)
+    week_end = beijing_now.date()
+    week_start = week_end - timedelta(days=lookback_days - 1)
+
+    # AI 分析
+    try:
+        print(f"\n[AI] 正在生成周报分析...")
+        from src.analyzer import create_analyzer
+
+        aws_region = config.get('ai.aws_region', 'us-west-2')
+        top_n = config.get('weekly.top_n', 10)
+
+        analyzer = create_analyzer(aws_region=aws_region)
+        weekly_analysis = analyzer.analyze_weekly(week_news, top_n=top_n)
+
+        print(f"[OK] 周报分析完成")
+        print(f"   - 趋势数: {len(weekly_analysis.get('trends', []))}")
+        print(f"   - TOP 新闻: {len(weekly_analysis.get('top_news', []))}")
+        print(f"   - 重点事件: {len(weekly_analysis.get('highlights', []))}")
+
+    except Exception as e:
+        print(f"[WARN] 周报分析失败: {e}")
+        weekly_analysis = {
+            "summary": "",
+            "trends": [],
+            "top_news": week_news[:10],
+            "highlights": [],
+            "weekly_stats": {"total_news": len(week_news)}
+        }
+
+    # 发送周报邮件
+    from datetime import date as date_type
+    week_start_dt = datetime.combine(week_start, datetime.min.time())
+    week_end_dt = datetime.combine(week_end, datetime.min.time())
+
+    subject, content = mailer.format_weekly_email(weekly_analysis, week_start_dt, week_end_dt)
+
+    if subject and content:
+        if mailer.send(subject, content):
+            print("周报发送成功！")
+
+            # 保存周报摘要
+            storage.save_weekly_summary({
+                "week_start": str(week_start),
+                "week_end": str(week_end),
+                "total_news": len(week_news),
+                "trends": weekly_analysis.get('trends', []),
+                "summary": weekly_analysis.get('summary', '')
+            })
+        else:
+            print("周报发送失败")
+
+    print(f"{separator}\n")
+
+
 def main():
     """主程序入口"""
     print("WhatsNew 新闻聚合平台启动")
 
     # 加载配置
     config = Config('config.yaml')
-    beijing_time = config.get('schedule.daily_time', '06:00')
 
-    # 将北京时间转换为UTC时间（北京时间 = UTC+8）
+    # 日报调度
+    beijing_time = config.get('schedule.daily_time', '06:00')
     hour, minute = map(int, beijing_time.split(':'))
     utc_hour = (hour - 8) % 24
     utc_time = f"{utc_hour:02d}:{minute:02d}"
 
-    print(f"调度计划: 每天北京时间 {beijing_time} 发送 (UTC {utc_time})")
-    print(f"下次执行时间将在启动后显示")
+    print(f"日报调度: 每天北京时间 {beijing_time} (UTC {utc_time})")
+
+    # 周报调度
+    weekly_enabled = config.get('weekly.enabled', False)
+    if weekly_enabled:
+        weekly_day = config.get('weekly.day_of_week', 0)  # 0=周一
+        weekly_time = config.get('weekly.time', '09:00')
+        day_names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        print(f"周报调度: 每{day_names[weekly_day]}北京时间 {weekly_time}")
+    else:
+        print("周报调度: 未启用")
+
     print(f"按 Ctrl+C 退出\n")
 
-    # 立即执行一次
+    # 立即执行日报
     run_task()
 
     # 设置每日定时任务（使用UTC时间）
     schedule.every().day.at(utc_time).do(run_task)
 
+    # 设置周报定时任务
+    if weekly_enabled:
+        weekly_time = config.get('weekly.time', '09:00')
+        weekly_day = config.get('weekly.day_of_week', 0)
+        w_hour, w_minute = map(int, weekly_time.split(':'))
+        w_utc_hour = (w_hour - 8) % 24
+        w_utc_time = f"{w_utc_hour:02d}:{w_minute:02d}"
+
+        # 根据星期几设置调度
+        day_schedulers = {
+            0: schedule.every().monday,
+            1: schedule.every().tuesday,
+            2: schedule.every().wednesday,
+            3: schedule.every().thursday,
+            4: schedule.every().friday,
+            5: schedule.every().saturday,
+            6: schedule.every().sunday
+        }
+        day_schedulers[weekly_day].at(w_utc_time).do(run_weekly_task)
+
     # 显示下次执行时间
     next_run = schedule.next_run()
     if next_run:
         print(f"\n下次执行时间: {next_run.strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        # 转换为北京时间显示
         beijing_next = next_run + timedelta(hours=8)
         print(f"             ({beijing_next.strftime('%Y-%m-%d %H:%M:%S')} 北京时间)\n")
 

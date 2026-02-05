@@ -432,6 +432,235 @@ class Crawler:
             print(f"  抓取失败 {source_name}: {e}")
             return []
 
+    def fetch_web_tmtpost(self, max_items=5, max_days=2):
+        """爬取钛媒体 AI 频道"""
+        source_name = "钛媒体 AI"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            resp = requests.get('https://www.tmtpost.com/tag/1162442',
+                              headers=self.headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            new_items = []
+            seen_urls = set()
+
+            # 找文章链接
+            for a in soup.find_all('a', href=True):
+                href = a.get('href', '')
+                # 钛媒体文章格式: /数字.html 或完整URL
+                if '/tml/' in href or (href.startswith('https://www.tmtpost.com/') and '.html' in href):
+                    if href.startswith('/'):
+                        full_url = f"https://www.tmtpost.com{href}"
+                    else:
+                        full_url = href
+
+                    if full_url in seen_urls:
+                        continue
+                    seen_urls.add(full_url)
+
+                    title = a.get_text(strip=True)
+                    if not title or len(title) < 8:
+                        continue
+
+                    item_id = self._generate_id(full_url)
+                    if self.storage.is_sent(item_id):
+                        continue
+
+                    item = {
+                        'id': item_id,
+                        'title': title,
+                        'link': full_url,
+                        'summary': title,
+                        'published': '',
+                        'source': source_name
+                    }
+
+                    new_items.append(item)
+                    if len(new_items) >= max_items:
+                        break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
+    def fetch_web_xinzhiyuan(self, max_items=5, max_days=2):
+        """爬取新智元"""
+        source_name = "新智元"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            # 新智元主站
+            resp = requests.get('https://www.xinzhiyuan.com/',
+                              headers=self.headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            new_items = []
+            seen_urls = set()
+
+            # 查找文章链接
+            for a in soup.find_all('a', href=True):
+                href = a.get('href', '')
+                # 新智元文章格式
+                if '/article/' in href or '/news/' in href:
+                    if href.startswith('/'):
+                        full_url = f"https://www.xinzhiyuan.com{href}"
+                    elif href.startswith('http'):
+                        full_url = href
+                    else:
+                        continue
+
+                    if full_url in seen_urls:
+                        continue
+                    seen_urls.add(full_url)
+
+                    title = a.get_text(strip=True)
+                    if not title or len(title) < 6:
+                        continue
+
+                    item_id = self._generate_id(full_url)
+                    if self.storage.is_sent(item_id):
+                        continue
+
+                    item = {
+                        'id': item_id,
+                        'title': title,
+                        'link': full_url,
+                        'summary': title,
+                        'published': '',
+                        'source': source_name
+                    }
+
+                    new_items.append(item)
+                    if len(new_items) >= max_items:
+                        break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
+    def fetch_web_36kr_ai(self, max_items=5, max_days=2):
+        """爬取 36Kr AI 频道"""
+        source_name = "36Kr AI"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            # 36Kr AI 频道
+            resp = requests.get('https://36kr.com/information/AI/',
+                              headers=self.headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            new_items = []
+            seen_urls = set()
+
+            # 查找文章链接
+            for a in soup.find_all('a', href=True):
+                href = a.get('href', '')
+                # 36Kr 文章格式: /p/数字
+                if '/p/' in href and href != '/p/':
+                    if href.startswith('/'):
+                        full_url = f"https://36kr.com{href}"
+                    elif href.startswith('http'):
+                        full_url = href
+                    else:
+                        continue
+
+                    if full_url in seen_urls:
+                        continue
+                    seen_urls.add(full_url)
+
+                    title = a.get_text(strip=True)
+                    if not title or len(title) < 6:
+                        continue
+
+                    item_id = self._generate_id(full_url)
+                    if self.storage.is_sent(item_id):
+                        continue
+
+                    item = {
+                        'id': item_id,
+                        'title': title,
+                        'link': full_url,
+                        'summary': title,
+                        'published': '',
+                        'source': source_name
+                    }
+
+                    new_items.append(item)
+                    if len(new_items) >= max_items:
+                        break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
+    def fetch_web_jiqizhixin(self, max_items=5, max_days=2):
+        """爬取机器之心"""
+        source_name = "机器之心"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            # 机器之心主站
+            resp = requests.get('https://www.jiqizhixin.com/',
+                              headers=self.headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            new_items = []
+            seen_urls = set()
+
+            # 查找文章链接
+            for a in soup.find_all('a', href=True):
+                href = a.get('href', '')
+                # 机器之心文章格式
+                if '/article/' in href or '/daily/' in href:
+                    if href.startswith('/'):
+                        full_url = f"https://www.jiqizhixin.com{href}"
+                    elif href.startswith('http'):
+                        full_url = href
+                    else:
+                        continue
+
+                    if full_url in seen_urls:
+                        continue
+                    seen_urls.add(full_url)
+
+                    title = a.get_text(strip=True)
+                    if not title or len(title) < 6:
+                        continue
+
+                    item_id = self._generate_id(full_url)
+                    if self.storage.is_sent(item_id):
+                        continue
+
+                    item = {
+                        'id': item_id,
+                        'title': title,
+                        'link': full_url,
+                        'summary': title,
+                        'published': '',
+                        'source': source_name
+                    }
+
+                    new_items.append(item)
+                    if len(new_items) >= max_items:
+                        break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
     def fetch_all(self, sources, max_items=5, max_days=2):
         """抓取所有新闻源"""
         all_items = []
@@ -460,6 +689,14 @@ class Crawler:
                     items = self.fetch_web_langchain(max_items, max_days)
                 elif web_func == 'llamaindex':
                     items = self.fetch_web_llamaindex(max_items, max_days)
+                elif web_func == 'tmtpost':
+                    items = self.fetch_web_tmtpost(max_items, max_days)
+                elif web_func == 'xinzhiyuan':
+                    items = self.fetch_web_xinzhiyuan(max_items, max_days)
+                elif web_func == '36kr_ai':
+                    items = self.fetch_web_36kr_ai(max_items, max_days)
+                elif web_func == 'jiqizhixin':
+                    items = self.fetch_web_jiqizhixin(max_items, max_days)
                 else:
                     print(f"  未知的爬虫函数: {web_func}")
                     items = []
