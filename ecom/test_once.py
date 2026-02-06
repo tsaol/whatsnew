@@ -74,6 +74,9 @@ if new_items:
         for item in new_items:
             storage.mark_sent(item['id'], item['title'])
         print("所有新闻已发送并标记")
+
+        # 保存到 S3
+        storage.save_to_s3(content, new_items, ai_analysis, category='ecom')
 else:
     print("没有新内容")
 
