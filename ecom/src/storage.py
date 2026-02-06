@@ -51,16 +51,21 @@ class Storage:
             'data_file': str(self.data_file)
         }
 
-    def save_to_s3(self, html_content, items, ai_analysis, category='ecom'):
+    def save_to_s3(self, html_content, items, ai_analysis, s3_config):
         """保存日报到 S3
 
         Args:
             html_content: 邮件 HTML 内容
             items: 新闻列表
             ai_analysis: AI 分析结果
-            category: 'ai' 或 'ecom'
+            s3_config: S3 配置 {enabled, bucket, prefix}
         """
-        bucket = 'cls-whatsnew'
+        if not s3_config or not s3_config.get('enabled', False):
+            print("[S3] 存储已禁用")
+            return False
+
+        bucket = s3_config.get('bucket', 'cls-whatsnew')
+        category = s3_config.get('prefix', 'ecom')
         beijing_tz = timezone(timedelta(hours=8))
         date_str = datetime.now(beijing_tz).strftime('%Y-%m-%d')
         prefix = f'{category}/{date_str}'

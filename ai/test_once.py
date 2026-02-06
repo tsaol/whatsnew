@@ -69,7 +69,8 @@ if new_items:
         print("所有新闻已发送并标记")
 
         # 保存到 S3
-        storage.save_to_s3(content, new_items, ai_analysis, category='ai')
+        s3_config = config.get('s3', {})
+        storage.save_to_s3(content, new_items, ai_analysis, s3_config)
 else:
     print("没有新内容")
 
