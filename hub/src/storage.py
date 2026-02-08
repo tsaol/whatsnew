@@ -104,7 +104,10 @@ class ContentStorage:
                                 "published_at": {"type": "date"},
                                 "fetched_at": {"type": "date"},
                                 "url": {"type": "keyword"},
-                                "content_length": {"type": "integer"}
+                                "content_length": {"type": "integer"},
+                                "screenshot_s3": {"type": "keyword"},
+                                "html_s3": {"type": "keyword"},
+                                "images_s3": {"type": "keyword"}
                             }
                         }
                     }
@@ -162,6 +165,51 @@ class ContentStorage:
 
         except Exception as e:
             print(f"[Storage] 索引文章失败: {e}")
+            return False
+
+    def update_snapshot(self, article_id: str, snapshot: dict) -> bool:
+        """更新文章的快照路径
+
+        Args:
+            article_id: 文章 ID
+            snapshot: {screenshot_s3, html_s3, images_s3}
+
+        Returns:
+            bool: 是否成功
+        """
+        if not self.client:
+            return False
+
+        try:
+            # 通过 article_id 字段查找文档
+            search_body = {
+                "query": {
+                    "term": {"article_id": article_id}
+                }
+            }
+            result = self.client.search(index=self.index_name, body=search_body)
+
+            if result['hits']['total']['value'] == 0:
+                print(f"[Storage] 文章未找到: {article_id}")
+                return False
+
+            doc_id = result['hits']['hits'][0]['_id']
+
+            # 更新快照字段
+            update_body = {
+                "doc": {
+                    "screenshot_s3": snapshot.get('screenshot_s3', ''),
+                    "html_s3": snapshot.get('html_s3', ''),
+                    "images_s3": snapshot.get('images_s3', [])
+                }
+            }
+
+            self.client.update(index=self.index_name, id=doc_id, body=update_body)
+            print(f"[Storage] 快照路径已更新: {article_id[:16]}...")
+            return True
+
+        except Exception as e:
+            print(f"[Storage] 更新快照失败: {e}")
             return False
 
     def add_batch(self, articles: list) -> tuple:

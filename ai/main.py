@@ -69,6 +69,12 @@ def index_to_hub(items):
                         )
                         if result:
                             captured += 1
+                            # 更新 OpenSearch 中的快照路径
+                            storage.update_snapshot(article_id, {
+                                'screenshot_s3': result.get('screenshot_s3', ''),
+                                'html_s3': result.get('html_s3', ''),
+                                'images_s3': result.get('images_s3', [])
+                            })
                     except Exception as e:
                         print(f"[Hub] 完整抓取失败 {url}: {e}")
 
