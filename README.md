@@ -4,11 +4,13 @@ AI-focused news aggregator with intelligent analysis powered by AWS Bedrock Clau
 
 ## Features
 
-- **AI Analysis**: 7-node LangGraph workflow (categorize, filter, score, enhance, translate, trends, summarize)
+- **AI Analysis**: 12-node LangGraph workflow for intelligent news processing
 - **Smart Filtering**: Auto-removes non-AI content, focuses on GenAI/LLM/Agentic AI
 - **Bilingual**: English to Chinese translation for all news
-- **Professional Email**: Modern HTML digest with TOP news picks and source grouping
-- **25+ AI Sources**: OpenAI, Anthropic, Google AI, DeepMind, Hugging Face, AWS blogs, etc.
+- **Professional Email**: Modern HTML digest with TOP news picks and category grouping
+- **35+ AI Sources**: OpenAI, Anthropic, Google AI, DeepMind, Hugging Face, AWS blogs, etc.
+- **Content Hub**: Full-text storage with semantic search (OpenSearch + Cohere Embedding)
+- **S3 Archiving**: Daily reports archived to S3 (HTML + JSON)
 
 ## Quick Start
 

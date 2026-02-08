@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Content Hub Module**: New `hub/` directory for full-text storage and semantic search
+  - OpenSearch Serverless for vector + full-text search
+  - Cohere Multilingual v3 embedding (optimized for Chinese + English)
+  - Auto-index after daily report sent
+  - CLI: `python hub/main.py search "query"` for semantic search
+- **S3 Daily Report Archiving**: Daily reports now saved to S3
+  - HTML: `s3://cls-whatsnew/{ai|ecom}/{date}.html`
+  - JSON: `s3://cls-whatsnew/{ai|ecom}/{date}.json`
+- **Enhanced sent_news.json**: Now saves URL, source, and category for each news item
 - **E-commerce + AI Focus Mode**: New `ecom/` directory with dedicated config for e-commerce + AI content
 - **Key Companies Tracking**: Track specific companies (SHEIN, Amazon) across all news sources
 - **Company Aliases**: Broader matching with aliases (Amazon → aws, alexa, kindle, prime, etc.)
