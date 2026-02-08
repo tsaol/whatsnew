@@ -1,0 +1,6 @@
+opensearch-py>=2.4.0
+requests-aws4auth>=1.2.0
+trafilatura>=1.6.0
+boto3
+pyyaml
+requests

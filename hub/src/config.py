@@ -6,7 +6,7 @@ from pathlib import Path
 
 # S3 配置位置
 S3_CONFIG_BUCKET = 'cls-whatsnew'
-S3_CONFIG_KEY = 'config/ecom.yaml'
+S3_CONFIG_KEY = 'config/hub.yaml'
 
 
 class Config:
@@ -36,7 +36,7 @@ class Config:
             return yaml.safe_load(f)
 
     def get(self, key, default=None):
-        """获取配置项"""
+        """获取配置项，支持点号分层访问"""
         keys = key.split('.')
         value = self.config
         for k in keys:
@@ -47,13 +47,17 @@ class Config:
         return value if value is not None else default
 
     @property
-    def email_config(self):
-        return self.config.get('email', {})
+    def opensearch_config(self):
+        return self.config.get('opensearch', {})
 
     @property
-    def sources(self):
-        return [s for s in self.config.get('sources', []) if s.get('enabled', True)]
+    def embeddings_config(self):
+        return self.config.get('embeddings', {})
 
     @property
-    def schedule_config(self):
-        return self.config.get('schedule', {})
+    def s3_config(self):
+        return self.config.get('s3', {})
+
+    @property
+    def fetch_config(self):
+        return self.config.get('fetch', {})
