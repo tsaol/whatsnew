@@ -234,7 +234,11 @@ Daily Report Sent
       "category": {"type": "keyword"},
       "published_at": {"type": "date"},
       "url": {"type": "keyword"},
-      "indexed_at": {"type": "date"}
+      "indexed_at": {"type": "date"},
+      "folder_name": {"type": "keyword"},
+      "screenshot_s3": {"type": "keyword"},
+      "html_s3": {"type": "keyword"},
+      "images_s3": {"type": "keyword"}
     }
   }
 }
@@ -270,12 +274,16 @@ python hub/main.py stats                      # 统计信息
 **S3 存储结构:**
 ```
 s3://cls-whatsnew/hub/
-├── screenshots/{id}.png    # 全页截图
-├── html/{id}.html          # 完整 HTML
-├── images/{id}/            # 文章图片
-│   ├── 000.png
-│   └── ...
-└── meta/{id}.json          # 元数据
+└── {date}_{title}_{short_id}/    # 可读的文章目录名
+    ├── screenshot.png             # 全页截图
+    ├── page.html                  # 完整 HTML
+    ├── article.json               # 文章文本内容
+    ├── meta.json                  # 抓取元数据
+    └── images/                    # 文章图片
+        ├── 000.png
+        └── ...
+
+示例: hub/2026-02-08_LangGraph-Cloud_d77d3855/
 ```
 
 ---
