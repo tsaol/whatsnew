@@ -134,6 +134,10 @@ class BrowserFetcher:
                 title = (metadata or {}).get('title') or page.title()
                 result['title'] = title
 
+                # 生成可读的文件夹名
+                folder_name = self._generate_folder_name(title, article_id)
+                result['folder_name'] = folder_name
+
                 # 获取正文
                 text = page.evaluate('() => document.body.innerText')
                 result['text'] = text
@@ -142,10 +146,10 @@ class BrowserFetcher:
                 # 保存截图
                 if save_screenshot:
                     screenshot = page.screenshot(full_page=True, type='png')
-                    screenshot_key = f"{self.prefix}/{article_id}/screenshot.png"
+                    screenshot_key = f"{self.prefix}/{folder_name}/screenshot.png"
 
                     # 本地保存
-                    local_path = self.local_dir / article_id / "screenshot.png"
+                    local_path = self.local_dir / folder_name / "screenshot.png"
                     local_path.parent.mkdir(parents=True, exist_ok=True)
                     local_path.write_bytes(screenshot)
                     result['screenshot_local'] = str(local_path)
@@ -165,10 +169,10 @@ class BrowserFetcher:
                 if save_html:
                     # 获取完整 HTML
                     html = page.content()
-                    html_key = f"{self.prefix}/{article_id}/page.html"
+                    html_key = f"{self.prefix}/{folder_name}/page.html"
 
                     # 本地保存
-                    local_html = self.local_dir / article_id / "page.html"
+                    local_html = self.local_dir / folder_name / "page.html"
                     local_html.parent.mkdir(parents=True, exist_ok=True)
                     local_html.write_text(html, encoding='utf-8')
                     result['html_local'] = str(local_html)
@@ -196,7 +200,7 @@ class BrowserFetcher:
                     for img in saved_images:
                         if img.get('local_path'):
                             local_path = Path(img['local_path'])
-                            s3_key = f"{self.prefix}/{article_id}/images/{local_path.name}"
+                            s3_key = f"{self.prefix}/{folder_name}/images/{local_path.name}"
                             self.s3.put_object(
                                 Bucket=self.bucket,
                                 Key=s3_key,
@@ -210,7 +214,7 @@ class BrowserFetcher:
                 browser.close()
 
                 # 保存元数据
-                meta_key = f"{self.prefix}/{article_id}/meta.json"
+                meta_key = f"{self.prefix}/{folder_name}/meta.json"
                 if save_to_s3:
                     self.s3.put_object(
                         Bucket=self.bucket,
@@ -285,3 +289,29 @@ class BrowserFetcher:
             '.svg': 'image/svg+xml',
             '.avif': 'image/avif'
         }.get(ext.lower(), 'image/jpeg')
+
+    def _generate_folder_name(self, title: str, article_id: str) -> str:
+        """生成可读的文件夹名: {date}_{title}_{short_id}
+
+        例如: 2026-02-08_LangChain-Templates_0d2526c2
+        """
+        import re
+
+        # 日期
+        date_str = datetime.now(self.beijing_tz).strftime('%Y-%m-%d')
+
+        # 标题转 slug (只保留字母数字，用横杠连接)
+        if title:
+            # 移除特殊字符，保留字母数字空格
+            slug = re.sub(r'[^\w\s-]', '', title)
+            # 空格转横杠
+            slug = re.sub(r'[\s_]+', '-', slug)
+            # 截断到 50 字符
+            slug = slug[:50].strip('-')
+        else:
+            slug = 'untitled'
+
+        # 短 ID (前 8 位)
+        short_id = article_id[:8]
+
+        return f"{date_str}_{slug}_{short_id}"

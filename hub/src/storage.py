@@ -326,12 +326,24 @@ class ContentStorage:
             return False
 
         try:
+            import re
             s3 = boto3.client('s3')
             bucket = self.s3_config.get('bucket', 'cls-whatsnew')
             prefix = self.s3_config.get('prefix', 'hub')
 
-            # 按文章 ID 组织目录
-            key = f"{prefix}/{article['id']}/article.json"
+            # 生成可读的文件夹名: {date}_{title}_{short_id}
+            beijing_tz = timezone(timedelta(hours=8))
+            date_str = datetime.now(beijing_tz).strftime('%Y-%m-%d')
+            title = article.get('title', 'untitled')
+            if title:
+                slug = re.sub(r'[^\w\s-]', '', title)
+                slug = re.sub(r'[\s_]+', '-', slug)[:50].strip('-')
+            else:
+                slug = 'untitled'
+            short_id = article['id'][:8]
+            folder_name = f"{date_str}_{slug}_{short_id}"
+
+            key = f"{prefix}/{folder_name}/article.json"
 
             s3.put_object(
                 Bucket=bucket,
