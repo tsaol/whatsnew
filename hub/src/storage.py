@@ -330,10 +330,8 @@ class ContentStorage:
             bucket = self.s3_config.get('bucket', 'cls-whatsnew')
             prefix = self.s3_config.get('prefix', 'hub')
 
-            beijing_tz = timezone(timedelta(hours=8))
-            date_str = datetime.now(beijing_tz).strftime('%Y-%m-%d')
-
-            key = f"{prefix}/articles/{date_str}/{article['id']}.json"
+            # 按文章 ID 组织目录
+            key = f"{prefix}/{article['id']}/article.json"
 
             s3.put_object(
                 Bucket=bucket,
