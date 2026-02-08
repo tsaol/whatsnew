@@ -36,10 +36,13 @@ class Storage:
         """检查是否已发送"""
         return item_id in self.sent_items
 
-    def mark_sent(self, item_id, title):
+    def mark_sent(self, item_id, title, link=None, source=None, category=None):
         """标记为已发送"""
         self.sent_items[item_id] = {
             'title': title,
+            'link': link,
+            'source': source,
+            'category': category,
             'sent_at': datetime.now().isoformat()
         }
         self.save()
