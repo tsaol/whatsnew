@@ -136,12 +136,25 @@ News is organized by **content type** rather than by source, optimized for Agent
 
 ### Module Structure
 ```
-src/
-├── config.py       # Configuration management
-├── crawler.py      # RSS + Web crawlers with keyword filter
-├── storage.py      # Deduplication and persistence
-├── analyzer.py     # LangGraph AI analysis (Agentic AI focus)
-└── mailer.py       # Email generation with date formatting
+whatsnew/
+├── ai/                     # AI 日报实例
+│   ├── src/
+│   │   ├── config.py       # Configuration management
+│   │   ├── crawler.py      # RSS + Web crawlers with keyword filter
+│   │   ├── storage.py      # Deduplication and persistence
+│   │   ├── analyzer.py     # LangGraph AI analysis (Agentic AI focus)
+│   │   └── mailer.py       # Email generation with date formatting
+│   └── data/
+├── ecom/                   # 电商+AI 日报实例
+│   ├── src/
+│   └── data/
+└── hub/                    # Content Hub (全文存储 + 语义搜索)
+    ├── src/
+    │   ├── config.py       # S3 + 本地配置加载
+    │   ├── fetcher.py      # 全文抓取 (trafilatura)
+    │   ├── storage.py      # OpenSearch Serverless 存储
+    │   └── search.py       # 语义 + 全文搜索
+    └── main.py             # CLI 入口
 ```
 
 ### Data Flow
@@ -162,6 +175,18 @@ Config
   → Email Generation
   → Send
   → Mark Sent
+  → S3 Archive (HTML + JSON)
+  → Content Hub Index (hook)
+```
+
+### Content Hub Data Flow
+```
+Daily Report Sent
+  → Hook: index_to_hub()
+  → For each news item:
+      ├─ Fetch full content (trafilatura)
+      ├─ Generate embedding (Cohere Multilingual v3)
+      └─ Index to OpenSearch Serverless
 ```
 
 ### Web Crawlers
@@ -178,6 +203,55 @@ Config
 #### LlamaIndex Blog
 - URL: https://www.llamaindex.ai/blog
 - Extract: Article links and titles
+
+---
+
+## Content Hub
+
+### Purpose
+存储新闻全文并提供语义搜索能力，支持后续的知识检索和问答。
+
+### Storage
+- **OpenSearch Serverless** (VECTORSEARCH 类型)
+- Collection: `whatsnew-hub`
+- VPC 内访问 (非公网)
+
+### Embedding
+- **Cohere Multilingual v3** (1024 维)
+- 中英文混合内容优化
+- Token 限制: 2048
+
+### Index Schema
+```json
+{
+  "mappings": {
+    "properties": {
+      "article_id": {"type": "keyword"},
+      "title": {"type": "text"},
+      "content": {"type": "text"},
+      "embedding": {"type": "knn_vector", "dimension": 1024},
+      "source": {"type": "keyword"},
+      "category": {"type": "keyword"},
+      "published_at": {"type": "date"},
+      "url": {"type": "keyword"},
+      "indexed_at": {"type": "date"}
+    }
+  }
+}
+```
+
+### Search Types
+- **语义搜索**: kNN 向量相似度
+- **全文搜索**: BM25 关键词匹配
+- **混合搜索**: 向量 + 全文组合
+
+### CLI Usage
+```bash
+python hub/main.py search "Claude Agent"     # 语义搜索
+python hub/main.py search "MCP" --fulltext   # 全文搜索
+python hub/main.py index --url https://...   # 手动索引
+python hub/main.py stats                      # 统计信息
+```
 
 ---
 
@@ -238,6 +312,8 @@ max_days: 3
 ### P1 - Important
 - [x] Web crawlers for sites without RSS
 - [x] Enhanced summaries (80-150 chars)
+- [x] Content Hub for full-text storage and semantic search
+- [x] S3 daily report archiving (HTML + JSON)
 - [ ] Filter corporate news from agent-specific sources
 - [ ] Filter pure quotes/references from Simon Willison
 
@@ -254,6 +330,7 @@ max_days: 3
 - [ ] Custom filter rules
 - [ ] Docker deployment
 - [ ] Monitoring and alerts
+- [ ] Content Hub web search interface
 
 ---
 
