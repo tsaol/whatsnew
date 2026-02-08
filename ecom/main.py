@@ -73,6 +73,11 @@ def run_task():
                     category=item.get('category')
                 )
             print("所有新闻已发送并标记")
+
+            # 保存到 S3
+            s3_config = config.get('s3', {})
+            if s3_config.get('enabled'):
+                storage.save_to_s3(content, new_items, ai_analysis, s3_config)
     else:
         print("没有新内容")
 
