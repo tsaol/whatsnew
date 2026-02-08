@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Image download and S3 upload
   - JavaScript rendering for SPA pages
   - Lazy-load image handling
+- **S3 Folder Reorganization**: Content organized by article with readable names
+  - Format: `hub/{date}_{title}_{short_id}/`
+  - Example: `hub/2026-02-08_LangGraph-Cloud_d77d3855/`
+  - Each folder contains: screenshot.png, page.html, article.json, meta.json, images/
+- **OpenSearch Snapshot Paths**: S3 paths stored in search index
+  - `folder_name`: Readable folder name for S3 path
+  - `screenshot_s3`: Direct link to full-page screenshot
+  - `html_s3`: Direct link to archived HTML
+  - `images_s3`: List of article image paths
 - **S3 Daily Report Archiving**: Daily reports now saved to S3
   - HTML: `s3://cls-whatsnew/{ai|ecom}/{date}.html`
   - JSON: `s3://cls-whatsnew/{ai|ecom}/{date}.json`
