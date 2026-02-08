@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cohere Multilingual v3 embedding (optimized for Chinese + English)
   - Auto-index after daily report sent
   - CLI: `python hub/main.py search "query"` for semantic search
+- **Browser Fetcher**: Playwright-based full page capture with image download
+  - Full-page screenshot (PNG)
+  - Complete HTML with styles preserved
+  - Image download and S3 upload
+  - JavaScript rendering for SPA pages
+  - Lazy-load image handling
 - **S3 Daily Report Archiving**: Daily reports now saved to S3
   - HTML: `s3://cls-whatsnew/{ai|ecom}/{date}.html`
   - JSON: `s3://cls-whatsnew/{ai|ecom}/{date}.json`

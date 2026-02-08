@@ -253,6 +253,31 @@ python hub/main.py index --url https://...   # 手动索引
 python hub/main.py stats                      # 统计信息
 ```
 
+### Content Fetchers
+
+| Fetcher | 技术 | 用途 | 输出 |
+|---------|------|------|------|
+| `fetcher.py` | trafilatura | 快速纯文本提取 | 正文文本 |
+| `browser_fetcher.py` | Playwright | 完整页面抓取 | 截图 + HTML + 图片 |
+
+**BrowserFetcher 功能:**
+- JS 渲染: 支持 SPA 动态页面
+- 全页截图: PNG 格式完整页面
+- HTML 存档: 保留样式和结构
+- 图片下载: 自动保存内容图片到 S3
+- 懒加载: 滚动触发延迟加载图片
+
+**S3 存储结构:**
+```
+s3://cls-whatsnew/hub/
+├── screenshots/{id}.png    # 全页截图
+├── html/{id}.html          # 完整 HTML
+├── images/{id}/            # 文章图片
+│   ├── 000.png
+│   └── ...
+└── meta/{id}.json          # 元数据
+```
+
 ---
 
 ## Configuration
