@@ -1,6 +1,8 @@
 """WhatsNew - 新闻爬虫聚合平台主程序"""
 import time
 import schedule
+import sys
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from src.config import Config
 from src.storage import Storage
@@ -10,6 +12,51 @@ from src.mailer import Mailer
 
 # 北京时区
 BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+def index_to_hub(items):
+    """将新闻索引到 Content Hub"""
+    try:
+        # 添加 hub 模块路径
+        hub_path = Path(__file__).parent.parent / 'hub'
+        if hub_path.exists():
+            sys.path.insert(0, str(hub_path))
+            from src.config import Config as HubConfig
+            from src.storage import ContentStorage
+            from src.fetcher import ContentFetcher
+
+            print("\n[Hub] 开始索引到 Content Hub...")
+            hub_config = HubConfig()
+            storage = ContentStorage(hub_config)
+            fetcher = ContentFetcher(hub_config)
+
+            success = 0
+            for item in items:
+                url = item.get('link')
+                if not url:
+                    continue
+
+                # 检查是否已存在
+                article_id = fetcher._generate_id(url)
+                if storage.exists(article_id):
+                    continue
+
+                # 抓取全文并索引
+                article = fetcher.fetch_full_content(url, metadata={
+                    'title': item.get('title'),
+                    'source': item.get('source'),
+                    'category': item.get('category')
+                })
+
+                if article and storage.add_article(article):
+                    storage.save_to_s3(article)
+                    success += 1
+
+            print(f"[Hub] 索引完成: {success}/{len(items)} 篇")
+        else:
+            print("[Hub] hub 模块未找到，跳过索引")
+    except Exception as e:
+        print(f"[Hub] 索引失败: {e}")
 
 
 def run_task():
@@ -71,6 +118,11 @@ def run_task():
             for item in new_items:
                 storage.mark_sent(item['id'], item['title'])
             print("所有新闻已发送并标记")
+
+            # 索引到 Content Hub
+            hub_enabled = config.get('hub.enabled', True)
+            if hub_enabled:
+                index_to_hub(new_items)
     else:
         print("没有新内容")
 
