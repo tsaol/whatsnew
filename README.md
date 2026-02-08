@@ -10,6 +10,7 @@ AI-focused news aggregator with intelligent analysis powered by AWS Bedrock Clau
 - **Professional Email**: Modern HTML digest with TOP news picks and category grouping
 - **35+ AI Sources**: OpenAI, Anthropic, Google AI, DeepMind, Hugging Face, AWS blogs, etc.
 - **Content Hub**: Full-text storage with semantic search (OpenSearch + Cohere Embedding)
+- **Browser Capture**: Playwright-based full page capture with screenshots and image download
 - **S3 Archiving**: Daily reports archived to S3 (HTML + JSON)
 
 ## Quick Start
