@@ -217,8 +217,11 @@ class ContentStorage:
 
             model_id = self.embed_config.get('model_id', 'amazon.titan-embed-text-v2:0')
 
-            # 截断文本
-            truncated_text = text[:8000]
+            # 根据模型截断文本 (Cohere 限制 2048 tokens)
+            if 'cohere' in model_id:
+                truncated_text = text[:2000]
+            else:
+                truncated_text = text[:8000]
 
             # 根据模型构建不同的请求体
             if 'cohere' in model_id:
