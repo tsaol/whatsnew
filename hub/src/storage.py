@@ -206,6 +206,7 @@ class ContentStorage:
                 # 更新快照字段
                 update_body = {
                     "doc": {
+                        "folder_name": snapshot.get('folder_name', ''),
                         "screenshot_s3": snapshot.get('screenshot_s3', ''),
                         "html_s3": snapshot.get('html_s3', ''),
                         "images_s3": snapshot.get('images_s3', [])
