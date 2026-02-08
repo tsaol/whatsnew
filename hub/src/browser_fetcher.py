@@ -142,10 +142,11 @@ class BrowserFetcher:
                 # 保存截图
                 if save_screenshot:
                     screenshot = page.screenshot(full_page=True, type='png')
-                    screenshot_key = f"{self.prefix}/screenshots/{article_id}.png"
+                    screenshot_key = f"{self.prefix}/{article_id}/screenshot.png"
 
                     # 本地保存
-                    local_path = self.local_dir / f"{article_id}.png"
+                    local_path = self.local_dir / article_id / "screenshot.png"
+                    local_path.parent.mkdir(parents=True, exist_ok=True)
                     local_path.write_bytes(screenshot)
                     result['screenshot_local'] = str(local_path)
 
@@ -164,10 +165,11 @@ class BrowserFetcher:
                 if save_html:
                     # 获取完整 HTML
                     html = page.content()
-                    html_key = f"{self.prefix}/html/{article_id}.html"
+                    html_key = f"{self.prefix}/{article_id}/page.html"
 
                     # 本地保存
-                    local_html = self.local_dir / f"{article_id}.html"
+                    local_html = self.local_dir / article_id / "page.html"
+                    local_html.parent.mkdir(parents=True, exist_ok=True)
                     local_html.write_text(html, encoding='utf-8')
                     result['html_local'] = str(local_html)
 
@@ -194,7 +196,7 @@ class BrowserFetcher:
                     for img in saved_images:
                         if img.get('local_path'):
                             local_path = Path(img['local_path'])
-                            s3_key = f"{self.prefix}/images/{article_id}/{local_path.name}"
+                            s3_key = f"{self.prefix}/{article_id}/images/{local_path.name}"
                             self.s3.put_object(
                                 Bucket=self.bucket,
                                 Key=s3_key,
@@ -208,7 +210,7 @@ class BrowserFetcher:
                 browser.close()
 
                 # 保存元数据
-                meta_key = f"{self.prefix}/meta/{article_id}.json"
+                meta_key = f"{self.prefix}/{article_id}/meta.json"
                 if save_to_s3:
                     self.s3.put_object(
                         Bucket=self.bucket,
