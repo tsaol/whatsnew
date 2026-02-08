@@ -204,7 +204,7 @@ class ContentStorage:
             return None
 
     def _get_embedding(self, text: str) -> Optional[list]:
-        """调用 Bedrock Titan Embeddings 生成向量"""
+        """调用 Bedrock Embeddings 生成向量 (支持 Titan 和 Cohere)"""
         if not text:
             return None
 
@@ -217,16 +217,32 @@ class ContentStorage:
 
             model_id = self.embed_config.get('model_id', 'amazon.titan-embed-text-v2:0')
 
-            # 截断文本 (Titan v2 最大 8000 tokens)
+            # 截断文本
             truncated_text = text[:8000]
+
+            # 根据模型构建不同的请求体
+            if 'cohere' in model_id:
+                # Cohere API 格式
+                request_body = {
+                    "texts": [truncated_text],
+                    "input_type": "search_document"
+                }
+            else:
+                # Titan API 格式
+                request_body = {"inputText": truncated_text}
 
             response = self.bedrock.invoke_model(
                 modelId=model_id,
-                body=json.dumps({"inputText": truncated_text})
+                body=json.dumps(request_body)
             )
 
             result = json.loads(response['body'].read())
-            return result.get('embedding')
+
+            # 根据模型解析不同的响应格式
+            if 'cohere' in model_id:
+                return result.get('embeddings', [[]])[0]
+            else:
+                return result.get('embedding')
 
         except Exception as e:
             print(f"[Storage] 生成 embedding 失败: {e}")
