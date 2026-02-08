@@ -125,6 +125,11 @@ def run_task():
                 )
             print("所有新闻已发送并标记")
 
+            # 保存到 S3
+            s3_config = config.get('s3', {})
+            if s3_config.get('enabled'):
+                storage.save_to_s3(content, new_items, ai_analysis, s3_config)
+
             # 索引到 Content Hub
             hub_enabled = config.get('hub.enabled', True)
             if hub_enabled:
