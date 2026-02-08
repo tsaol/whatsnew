@@ -74,7 +74,7 @@ class ContentStorage:
             return
 
         try:
-            if not self.client.indices.exists(self.index_name):
+            if not self.client.indices.exists(index=self.index_name):
                 self.client.indices.create(
                     index=self.index_name,
                     body={
@@ -150,10 +150,10 @@ class ContentStorage:
                 "content_length": article.get('content_length', 0)
             }
 
-            # 索引文档
+            # 索引文档 (OpenSearch Serverless 不支持自定义 ID)
+            doc['article_id'] = article['id']  # 保存原始 ID 作为字段
             self.client.index(
                 index=self.index_name,
-                id=article['id'],
                 body=doc
             )
 
