@@ -167,12 +167,13 @@ class ContentStorage:
             print(f"[Storage] 索引文章失败: {e}")
             return False
 
-    def update_snapshot(self, article_id: str, snapshot: dict) -> bool:
+    def update_snapshot(self, article_id: str, snapshot: dict, max_retries: int = 3) -> bool:
         """更新文章的快照路径
 
         Args:
             article_id: 文章 ID
             snapshot: {screenshot_s3, html_s3, images_s3}
+            max_retries: 最大重试次数 (OpenSearch Serverless 有延迟)
 
         Returns:
             bool: 是否成功
@@ -180,37 +181,50 @@ class ContentStorage:
         if not self.client:
             return False
 
-        try:
-            # 通过 article_id 字段查找文档
-            search_body = {
-                "query": {
-                    "term": {"article_id": article_id}
+        import time
+
+        for attempt in range(max_retries):
+            try:
+                # 通过 article_id 字段查找文档 (使用 match 而非 term，因为字段可能是 text 类型)
+                search_body = {
+                    "query": {
+                        "match": {"article_id": article_id}
+                    }
                 }
-            }
-            result = self.client.search(index=self.index_name, body=search_body)
+                result = self.client.search(index=self.index_name, body=search_body)
 
-            if result['hits']['total']['value'] == 0:
-                print(f"[Storage] 文章未找到: {article_id}")
-                return False
+                if result['hits']['total']['value'] == 0:
+                    if attempt < max_retries - 1:
+                        print(f"[Storage] 文章未找到，等待重试 ({attempt + 1}/{max_retries})...")
+                        time.sleep(5)  # 等待 OpenSearch 索引同步
+                        continue
+                    print(f"[Storage] 文章未找到: {article_id}")
+                    return False
 
-            doc_id = result['hits']['hits'][0]['_id']
+                doc_id = result['hits']['hits'][0]['_id']
 
-            # 更新快照字段
-            update_body = {
-                "doc": {
-                    "screenshot_s3": snapshot.get('screenshot_s3', ''),
-                    "html_s3": snapshot.get('html_s3', ''),
-                    "images_s3": snapshot.get('images_s3', [])
+                # 更新快照字段
+                update_body = {
+                    "doc": {
+                        "screenshot_s3": snapshot.get('screenshot_s3', ''),
+                        "html_s3": snapshot.get('html_s3', ''),
+                        "images_s3": snapshot.get('images_s3', [])
+                    }
                 }
-            }
 
-            self.client.update(index=self.index_name, id=doc_id, body=update_body)
-            print(f"[Storage] 快照路径已更新: {article_id[:16]}...")
-            return True
+                self.client.update(index=self.index_name, id=doc_id, body=update_body)
+                print(f"[Storage] 快照路径已更新: {article_id[:16]}...")
+                return True
 
-        except Exception as e:
-            print(f"[Storage] 更新快照失败: {e}")
-            return False
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"[Storage] 更新失败，重试 ({attempt + 1}/{max_retries}): {e}")
+                    time.sleep(3)
+                else:
+                    print(f"[Storage] 更新快照失败: {e}")
+                    return False
+
+        return False
 
     def add_batch(self, articles: list) -> tuple:
         """批量添加文章
