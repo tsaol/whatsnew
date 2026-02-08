@@ -65,7 +65,13 @@ def run_task():
         if mailer.send(subject, content):
             # 标记为已发送
             for item in new_items:
-                storage.mark_sent(item['id'], item['title'])
+                storage.mark_sent(
+                    item['id'],
+                    item['title'],
+                    link=item.get('link'),
+                    source=item.get('source'),
+                    category=item.get('category')
+                )
             print("所有新闻已发送并标记")
     else:
         print("没有新内容")
