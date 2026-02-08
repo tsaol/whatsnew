@@ -71,6 +71,7 @@ def index_to_hub(items):
                             captured += 1
                             # 更新 OpenSearch 中的快照路径
                             storage.update_snapshot(article_id, {
+                                'folder_name': result.get('folder_name', ''),
                                 'screenshot_s3': result.get('screenshot_s3', ''),
                                 'html_s3': result.get('html_s3', ''),
                                 'images_s3': result.get('images_s3', [])
