@@ -5,6 +5,7 @@ import re
 import requests
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
+from dateutil.parser import parse as dateutil_parse
 
 
 class Crawler:
@@ -217,6 +218,10 @@ class Crawler:
                               headers=self.headers, timeout=15)
             soup = BeautifulSoup(resp.text, 'html.parser')
 
+            # 日期过滤
+            cutoff_date = datetime.now() - timedelta(days=max_days)
+            expired_count = 0
+
             # 找到所有新闻链接
             articles = soup.find_all('a', href=True)
             news_links = []
@@ -228,7 +233,7 @@ class Crawler:
                     news_links.append(href)
 
             new_items = []
-            for href in news_links[:max_items * 2]:
+            for href in news_links[:max_items * 3]:
                 full_url = f"https://www.anthropic.com{href}"
                 item_id = self._generate_id(full_url)
 
@@ -282,6 +287,16 @@ class Crawler:
                         pub_meta = detail_soup.find('meta', {'property': 'article:published_time'})
                         published = pub_meta.get('content', '') if pub_meta else ''
 
+                    # 备选：从 "body-3 agate" div 获取 (Anthropic 特有格式)
+                    if not published:
+                        date_div = detail_soup.find('div', class_=lambda c: c and 'body-3' in c and 'agate' in c)
+                        if date_div:
+                            date_text = date_div.get_text(strip=True)
+                            # 格式如 "Sep 29, 2025"
+                            date_match = re.search(r'([A-Z][a-z]{2} \d{1,2}, \d{4})', date_text)
+                            if date_match:
+                                published = date_match.group(1)
+
                 except Exception as e:
                     # 从 URL 生成标题
                     title = href.split('/')[-1].replace('-', ' ').title()
@@ -290,6 +305,18 @@ class Crawler:
 
                 if not title:
                     continue
+
+                # 日期过滤
+                if published:
+                    try:
+                        pub_datetime = dateutil_parse(published)
+                        if pub_datetime.tzinfo:
+                            pub_datetime = pub_datetime.replace(tzinfo=None)
+                        if pub_datetime < cutoff_date:
+                            expired_count += 1
+                            continue  # 跳过过期内容
+                    except:
+                        pass  # 解析失败则不过滤
 
                 item = {
                     'id': item_id,
@@ -304,7 +331,11 @@ class Crawler:
                 if len(new_items) >= max_items:
                     break
 
-            print(f"  找到 {len(new_items)} 条新内容")
+            # 打印统计
+            if expired_count > 0:
+                print(f"  找到 {len(new_items)} 条新内容 (过期 {expired_count})")
+            else:
+                print(f"  找到 {len(new_items)} 条新内容")
             return new_items
 
         except Exception as e:
