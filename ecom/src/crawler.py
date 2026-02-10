@@ -258,12 +258,23 @@ class Crawler:
                     keyword_filtered += 1
                     continue
 
+                # 提取发布日期 (优先使用 parsed 格式)
+                pub_date = ''
+                published_time = entry.get('published_parsed') or entry.get('updated_parsed')
+                if published_time:
+                    try:
+                        pub_date = datetime(*published_time[:6]).strftime('%Y-%m-%d')
+                    except:
+                        pass
+                if not pub_date:
+                    pub_date = entry.get('published', '') or entry.get('updated', '')
+
                 item = {
                     'id': item_id,
                     'title': title,
                     'link': entry.get('link', ''),
                     'summary': summary,
-                    'published': entry.get('published', ''),
+                    'published': pub_date,
                     'source': source_name,
                     'is_key_company': is_key_company  # 标记是否为关键企业新闻
                 }
@@ -434,7 +445,7 @@ class Crawler:
                         'title': title,
                         'link': href,
                         'summary': title,  # 简化，不获取详情
-                        'published': '',
+                        'published': datetime.now().strftime('%Y-%m-%d'),
                         'source': source_name
                     }
 
@@ -563,7 +574,7 @@ class Crawler:
                             'title': title,
                             'link': full_url,
                             'summary': title,  # 使用标题作为摘要
-                            'published': '',
+                            'published': datetime.now().strftime('%Y-%m-%d'),
                             'source': source_name,
                             'is_key_company': True  # 标记为关键企业
                         }
@@ -638,7 +649,7 @@ class Crawler:
                     'title': title,
                     'link': full_url,
                     'summary': title,
-                    'published': '',
+                    'published': datetime.now().strftime('%Y-%m-%d'),
                     'source': source_name,
                     'is_key_company': True  # 标记为关键企业
                 }
