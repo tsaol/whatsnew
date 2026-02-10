@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Email subject format: `WhatsNew [Ecom] [AI] - N 条新内容`
 
 ### Fixed
+- **Published Date Display** (#25): Articles now show original publication date in email
+  - RSS feeds: Extract from `published_parsed` / `updated_parsed` (YYYY-MM-DD format)
+  - Web scrapers: Default to current date for sources without date info
+  - Content Hub: Pass `published` field in metadata for indexing
+- **Anthropic Crawler Date Filtering** (#24): Fix old articles being included
+- **Email Recipients Parsing** (#21): Fix Resend API error with comma-separated recipients
 - **Key Company Filter Bug**: Google News results now require actual company mention in content
 - Previously, news from "Google News - Amazon AI" auto-passed without checking content
 - Now filters like "The best free AI courses..." are correctly excluded
