@@ -3,6 +3,7 @@ from src.config import Config
 from src.storage import Storage
 from src.crawler import Crawler
 from src.mailer import Mailer
+from src.company_info import CompanyInfo, format_company_info_html
 
 print("测试运行 WhatsNew...")
 print("="*50)
@@ -55,6 +56,17 @@ if new_items and ai_enabled and len(new_items) >= min_news:
         print(f"   继续使用传统方式发送邮件...")
         ai_analysis = None
 
+# 获取关键企业信息
+company_info_html = None
+try:
+    ci = CompanyInfo()
+    companies_info = ci.get_all_companies_info()
+    if companies_info:
+        company_info_html = format_company_info_html(companies_info)
+        print(f"[OK] 获取 {len(companies_info)} 家企业信息")
+except Exception as e:
+    print(f"[WARN] 获取企业信息失败: {e}")
+
 # 发送邮件
 email_enabled = config.get('email.enabled', True)
 
@@ -64,7 +76,7 @@ if new_items:
     print(f"\n共发现 {len(new_items)} 条新内容")
     if key_company_count > 0:
         print(f"  其中关键企业新闻: {key_company_count} 条")
-    subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
+    subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis, company_info_html=company_info_html)
 
     if not email_enabled:
         print("[跳过] 邮件发送已禁用 (email.enabled: false)")

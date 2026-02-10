@@ -85,7 +85,7 @@ class Mailer:
             print(f"邮件发送失败: {e}")
             return False
 
-    def format_news_email(self, items, ai_analysis=None):
+    def format_news_email(self, items, ai_analysis=None, company_info_html=None):
         """格式化新闻邮件内容 - 现代化设计"""
         if not items:
             return None, None
@@ -551,6 +551,14 @@ class Mailer:
                     </div>
                 </div>
         """
+
+        # 关键企业信息卡片
+        if company_info_html:
+            html += f"""
+                <div style="padding: 24px 32px;">
+                    {company_info_html}
+                </div>
+            """
 
         # AI 分析区域
         if ai_analysis:
