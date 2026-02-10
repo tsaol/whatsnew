@@ -91,7 +91,12 @@ def get_freshness_badge(date_str):
 class Mailer:
     def __init__(self, config):
         self.provider = config.get('provider', 'smtp')
-        self.to_email = config['to']
+        # 解析收件人列表 (支持逗号分隔)
+        to_raw = config['to']
+        if isinstance(to_raw, list):
+            self.to_emails = [e.strip() for e in to_raw]
+        else:
+            self.to_emails = [e.strip() for e in to_raw.split(',')]
 
         if self.provider == 'resend':
             self.resend_api_key = config.get('resend_api_key')
@@ -120,7 +125,7 @@ class Mailer:
                 },
                 json={
                     'from': self.from_email,
-                    'to': [self.to_email],
+                    'to': self.to_emails,
                     'subject': subject,
                     'html': content
                 },
@@ -143,14 +148,14 @@ class Mailer:
         try:
             msg = MIMEMultipart()
             msg['From'] = self.username
-            msg['To'] = self.to_email
+            msg['To'] = ', '.join(self.to_emails)
             msg['Subject'] = subject
 
             msg.attach(MIMEText(content, 'html', 'utf-8'))
 
             server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
             server.login(self.username, self.password)
-            server.send_message(msg)
+            server.sendmail(self.username, self.to_emails, msg.as_string())
             server.quit()
 
             print(f"邮件发送成功 (SMTP): {subject}")

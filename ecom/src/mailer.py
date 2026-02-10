@@ -56,21 +56,26 @@ class Mailer:
         self.smtp_port = config['smtp_port']
         self.username = config['username']
         self.password = config['password']
-        self.to_email = config['to']
+        # 解析收件人列表 (支持逗号分隔)
+        to_raw = config['to']
+        if isinstance(to_raw, list):
+            self.to_emails = [e.strip() for e in to_raw]
+        else:
+            self.to_emails = [e.strip() for e in to_raw.split(',')]
 
     def send(self, subject, content):
         """发送邮件"""
         try:
             msg = MIMEMultipart()
             msg['From'] = self.username
-            msg['To'] = self.to_email
+            msg['To'] = ', '.join(self.to_emails)
             msg['Subject'] = subject
 
             msg.attach(MIMEText(content, 'html', 'utf-8'))
 
             server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
             server.login(self.username, self.password)
-            server.send_message(msg)
+            server.sendmail(self.username, self.to_emails, msg.as_string())
             server.quit()
 
             print(f"邮件发送成功: {subject}")
