@@ -82,13 +82,15 @@ class ContentFetcher:
 
             # 构建结果
             beijing_tz = timezone(timedelta(hours=8))
+            # 优先使用 metadata 中的日期，否则使用提取的日期
+            pub_date = (metadata or {}).get('published') or extracted_date
             result = {
                 'id': article_id,
                 'url': url,
                 'title': (metadata or {}).get('title') or extracted_title or '',
                 'content': content,
                 'author': extracted_author,
-                'published_at': self._parse_date(extracted_date),
+                'published_at': self._parse_date(pub_date),
                 'source': (metadata or {}).get('source', ''),
                 'category': (metadata or {}).get('category', ''),
                 'fetched_at': datetime.now(beijing_tz).isoformat(),

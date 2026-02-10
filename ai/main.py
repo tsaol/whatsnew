@@ -47,7 +47,8 @@ def index_to_hub(items):
                 metadata = {
                     'title': item.get('title'),
                     'source': item.get('source'),
-                    'category': item.get('category')
+                    'category': item.get('category'),
+                    'published': item.get('published')
                 }
 
                 # 1. 抓取全文并索引到 OpenSearch (快速)
