@@ -31,10 +31,69 @@ NEWS_LABELS = {
     "研究": {"color": "#6366f1", "bg": "#eef2ff"},  # 学术论文
 }
 
+# 来源类型分组（用于双栏布局）
+SOURCE_TYPE_GROUPS = [
+    {
+        "name": "开源 & 工具",
+        "icon": "🔧",
+        "color": "#ea580c",
+        "bg": "#fff7ed",
+        "sources": ["GitHub Trending", "GitHub Blog", "HN Blog"]  # HN Blog 前缀匹配
+    },
+    {
+        "name": "产品 & 应用",
+        "icon": "🚀",
+        "color": "#db2777",
+        "bg": "#fdf2f8",
+        "sources": ["Product Hunt"]
+    },
+    {
+        "name": "技术博客",
+        "icon": "📝",
+        "color": "#0891b2",
+        "bg": "#ecfeff",
+        "sources": ["LlamaIndex", "LangChain", "Simon Willison", "Latent Space",
+                    "Anthropic", "OpenAI", "DeepMind", "Google AI", "Meta AI",
+                    "Hugging Face", "Ollama", "Replicate", "Together AI", "CrewAI"]
+    },
+    {
+        "name": "行业新闻",
+        "icon": "📰",
+        "color": "#059669",
+        "bg": "#ecfdf5",
+        "sources": ["TechCrunch", "VentureBeat", "MIT Tech Review", "Hacker News",
+                    "钛媒体", "36Kr", "机器之心", "新智元"]
+    },
+    {
+        "name": "学术论文",
+        "icon": "📚",
+        "color": "#7c3aed",
+        "bg": "#f5f3ff",
+        "sources": ["arXiv"]  # 前缀匹配
+    },
+    {
+        "name": "AWS & 云厂商",
+        "icon": "☁️",
+        "color": "#f59e0b",
+        "bg": "#fffbeb",
+        "sources": ["AWS", "Google Cloud", "Microsoft Research", "Semantic Kernel", "Azure"]
+    },
+]
+
 
 def get_beijing_time():
     """获取北京时间"""
     return datetime.now(BEIJING_TZ)
+
+
+def get_source_type_group(source_name):
+    """根据来源名称获取所属的来源类型分组"""
+    for group in SOURCE_TYPE_GROUPS:
+        for src_pattern in group["sources"]:
+            # 支持前缀匹配
+            if source_name.startswith(src_pattern) or src_pattern in source_name:
+                return group["name"]
+    return "其他"  # 默认分组
 
 
 def format_date(date_str):
@@ -1099,28 +1158,18 @@ class Mailer:
                 </div>
             """
 
-        # 完整新闻 - 按内容类型分组
+        # 完整新闻 - 按来源类型分组（双栏布局）
         html += """
             <div id="newslist" class="news-section">
                 <h2 class="news-section-title">完整新闻列表</h2>
         """
 
-        # 按内容类型分组（优化分类逻辑）
-        grouped_by_category = defaultdict(list)
-        chinese_sources = ['钛媒体', '新智元', '36Kr', '机器之心', '财经', '21世纪']
+        # 按来源类型分组
+        grouped_by_source_type = defaultdict(list)
         for item in items:
             source = item.get('source', '')
-            link = item.get('link', '')
-
-            # 优先判断：中文来源 → 中文精选
-            if any(cs in source for cs in chinese_sources):
-                grouped_by_category['中文精选'].append(item)
-            # 优先判断：arXiv 论文 → 论文精选
-            elif 'arxiv' in source.lower() or 'arxiv' in link.lower():
-                grouped_by_category['论文精选'].append(item)
-            else:
-                category = item.get('category', '行业动态')
-                grouped_by_category[category].append(item)
+            group_name = get_source_type_group(source)
+            grouped_by_source_type[group_name].append(item)
 
         # 获取 TOP 新闻的 ID
         top_ids = set()
@@ -1129,92 +1178,98 @@ class Mailer:
                 if 'id' in top_item:
                     top_ids.add(top_item['id'])
 
-        # 按类型优先级顺序显示新闻
-        for cat_info in CONTENT_CATEGORIES:
-            cat_name = cat_info["name"]
-            cat_items = grouped_by_category.get(cat_name, [])
+        # 按两列排列分组
+        html += '<div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px;">'
 
-            if not cat_items:
+        for group_info in SOURCE_TYPE_GROUPS:
+            group_name = group_info["name"]
+            group_items = grouped_by_source_type.get(group_name, [])
+
+            if not group_items:
                 continue
 
-            # 类型内按评分排序
-            cat_items = sorted(cat_items, key=lambda x: x.get('ai_score', 0), reverse=True)
+            # 分组内按评分排序
+            group_items = sorted(group_items, key=lambda x: x.get('ai_score', 0), reverse=True)
 
+            # 每个分组占 50% 宽度（移动端 100%）
             html += f"""
-                <div class="category-group">
-                    <div class="category-header" style="background: {cat_info['bg']};">
-                        <div class="category-left">
-                            <span class="category-icon" style="background: {cat_info['color']};">{cat_info['icon']}</span>
-                            <div>
-                                <div class="category-name" style="color: {cat_info['color']};">{cat_name}</div>
-                                <div class="category-desc">{cat_info['description']}</div>
-                            </div>
-                        </div>
-                        <span class="category-count" style="color: {cat_info['color']};">{len(cat_items)} 条</span>
+                <div style="flex: 1 1 calc(50% - 8px); min-width: 300px; background: {group_info['bg']}; border-radius: 12px; padding: 16px; border: 1px solid {group_info['color']}20;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid {group_info['color']}30;">
+                        <span style="font-size: 20px;">{group_info['icon']}</span>
+                        <span style="font-weight: 700; color: {group_info['color']}; font-size: 15px;">{group_name}</span>
+                        <span style="margin-left: auto; background: {group_info['color']}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">{len(group_items)}</span>
                     </div>
             """
 
-            for item in cat_items:
+            for item in group_items:
                 is_top = item.get('id') in top_ids
-                card_class = "news-card is-top" if is_top else "news-card"
+                title = item.get('title', '')[:80]
+                title_zh = item.get('title_zh', '')
+                link = item.get('link', '#')
+                source = item.get('source', '')
+                pub_date = format_date(item.get('published', ''))
+                freshness = get_freshness_badge(item.get('published', ''))
 
-                # 构建标签 HTML
+                # 标签
                 label = item.get('label', '')
                 label_html = ''
                 if label and label in NEWS_LABELS:
                     ls = NEWS_LABELS[label]
-                    label_html = f'<span style="background: {ls["bg"]}; color: {ls["color"]}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 6px;">{label}</span>'
+                    label_html = f'<span style="background: {ls["bg"]}; color: {ls["color"]}; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-right: 4px;">{label}</span>'
 
-                # 构建 meta badges
-                meta_html = ""
-                if is_top:
-                    meta_html += '<span class="meta-badge top">TOP</span>'
-                source = item.get('source', '')
-                if source:
-                    meta_html += f'<span class="meta-badge source">{source}</span>'
-
-                # 获取翻译
-                title_zh = item.get('title_zh', '')
-                summary_zh = item.get('summary_zh', '')
-                summary_text = item['summary'][:250]
-
-                # 检查摘要和翻译是否相同
-                summary_same = summary_zh and summary_text.replace(' ', '')[:100] == summary_zh.replace(' ', '')[:100]
-
-                # 格式化日期和时效性
-                pub_date = format_date(item.get('published', ''))
-                freshness = get_freshness_badge(item.get('published', ''))
-
-                # 一句话速读
-                one_liner = item.get('one_liner', '')
-                one_liner_html = f'<div style="font-size: 12px; color: #6366f1; margin-top: 4px; font-weight: 500;">→ {one_liner}</div>' if one_liner else ''
+                # TOP 标记
+                top_html = '<span style="background: #dc2626; color: white; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-right: 4px;">TOP</span>' if is_top else ''
 
                 html += f"""
-                    <div class="{card_class}">
-                        <div class="news-title">
-                            {freshness}{label_html}<a href="{item['link']}" target="_blank">{item['title']}</a>
+                    <div style="padding: 10px 0; border-bottom: 1px solid {group_info['color']}15;">
+                        <div style="margin-bottom: 4px;">
+                            {freshness}{top_html}{label_html}
+                            <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-weight: 600; font-size: 13px; line-height: 1.4;">{title}</a>
                         </div>
-                        {one_liner_html}
-                        {f'<div class="translation">{title_zh}</div>' if title_zh else ''}
-                        <div class="news-meta">
-                            {meta_html}
-                            <span class="meta-date">{pub_date}</span>
+                        {f'<div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">{title_zh[:60]}</div>' if title_zh else ''}
+                        <div style="display: flex; gap: 8px; font-size: 11px; color: #94a3b8;">
+                            <span style="background: #f1f5f9; padding: 1px 6px; border-radius: 3px;">{source}</span>
+                            <span>{pub_date}</span>
                         </div>
-                        <div class="news-summary">{summary_text}...</div>
-                        {f'<div class="news-translation">{summary_zh[:200]}...</div>' if summary_zh and not summary_same else ''}
                     </div>
                 """
 
             html += "</div>"
 
-        html += "</div>"
+        # 处理"其他"分组
+        other_items = grouped_by_source_type.get("其他", [])
+        if other_items:
+            other_items = sorted(other_items, key=lambda x: x.get('ai_score', 0), reverse=True)
+            html += f"""
+                <div style="flex: 1 1 100%; background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+                        <span style="font-size: 20px;">📋</span>
+                        <span style="font-weight: 700; color: #64748b; font-size: 15px;">其他</span>
+                        <span style="margin-left: auto; background: #64748b; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">{len(other_items)}</span>
+                    </div>
+            """
+            for item in other_items:
+                title = item.get('title', '')[:80]
+                link = item.get('link', '#')
+                source = item.get('source', '')
+                html += f"""
+                    <div style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                        <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-size: 13px;">{title}</a>
+                        <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[{source}]</span>
+                    </div>
+                """
+            html += "</div>"
+
+        html += "</div></div>"
 
         # 页脚
-        category_count = len([cat for cat in CONTENT_CATEGORIES if grouped_by_category.get(cat["name"])])
+        group_count = len([g for g in SOURCE_TYPE_GROUPS if grouped_by_source_type.get(g["name"])])
+        if grouped_by_source_type.get("其他"):
+            group_count += 1
         html += f"""
                 <div class="footer">
                     <p class="footer-text">
-                        共 {category_count} 个类型 · {len(items)} 条新闻
+                        共 {group_count} 个分类 · {len(items)} 条新闻
                     </p>
                 </div>
             </div>
