@@ -751,9 +751,9 @@ reason 字段必填，说明评分理由（15-30字）。
         if not scored:
             return {"news_labels": {}, "one_liners": {}}
 
-        # 准备新闻文本
+        # 准备新闻文本（包含摘要以便提取具体数据）
         news_text = "\n".join([
-            f"ID: {i} | {item.get('title_zh', item['title'])} | 来源: {item.get('source', '')} | 评分: {item.get('ai_score', 5)}"
+            f"ID: {i} | 标题: {item.get('title_zh', item['title'])} | 摘要: {item.get('summary_zh', item.get('summary', ''))[:200]} | 来源: {item.get('source', '')}"
             for i, item in enumerate(scored[:30])
         ])
 
@@ -769,21 +769,22 @@ reason 字段必填，说明评分理由（15-30字）。
 - 研究: 学术论文、技术研究
 
 **任务2: 一句话速读**（必须，每条都要）
-- 12-20字，必须包含具体的产品/项目/公司名称
-- 有数据就必须体现（版本号、star数、性能提升%、融资金额）
-- 格式: [主体名称] + [做了什么] + [关键数据/亮点]
-- 禁止: 空洞描述如"性能提升"、"全面升级"、"重大突破"
+- 仔细阅读【摘要】字段，从中提取具体数据
+- 12-20字，必须包含产品/项目/公司名称 + 具体数据
+- 数据优先级: 版本号 > star数 > 性能数字% > 金额 > 功能亮点
+- 格式: [主体] + [动作] + [数据]
 
-正确示例:
-- "Claude Opus 4.6发布，推理准确率提升23%"
-- "LangChain 0.3支持多Agent编排"
+正确示例（注意都有具体数据）:
+- "Claude 4.6发布，推理准确率提升23%"
+- "LangChain 0.3新增多Agent编排功能"
 - "ClawWork开源3天获2.5k stars"
-- "Anthropic融资$2B估值$60B"
+- "LlamaIndex集成Azure AI Search向量检索"
+- "Memgraph图数据库支持知识图谱构建"
 
 错误示例（禁止）:
-- "Agent开发效率提升" ❌ 缺少主体
-- "性能全面提升" ❌ 太空洞
-- "重大突破" ❌ 没有具体信息
+- "Agent开发效率提升" ❌ 无主体无数据
+- "LlamaIndex发布新功能" ❌ 功能是什么？
+- "重大技术突破" ❌ 什么技术？
 
 返回 JSON:
 {
