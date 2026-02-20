@@ -1510,7 +1510,7 @@ TOP 新闻:
             if str(i) in news_labels:
                 item['label'] = news_labels[str(i)]
             if str(i) in one_liners:
-                item['one_liner'] = one_liners[str(i)]
+                item['oneliner'] = one_liners[str(i)]
 
         return {
             "summary": result["summary"],

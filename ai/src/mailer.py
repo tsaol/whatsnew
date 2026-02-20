@@ -839,7 +839,7 @@ class Mailer:
             """
             for idx, news in enumerate(top_news):
                 # 从 scored items 中找到对应的 one_liner
-                one_liner = news.get('one_liner', '')
+                one_liner = news.get('oneliner', '')
                 if not one_liner:
                     # 尝试从 one_liners dict 中获取
                     for key, val in one_liners.items():
