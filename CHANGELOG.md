@@ -58,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Email subject format: `WhatsNew [Ecom] [AI] - N 条新内容`
 
 ### Fixed
+- **30秒速读质量改进** (#31): One-liner now extracts specific data from summaries
+  - Pass `summary_zh` to AI prompt for data extraction
+  - Fix field name mismatch: `one_liner` → `oneliner`
+  - Improved prompt with examples for name + data format
 - **Published Date Display** (#25): Articles now show original publication date in email
   - RSS feeds: Extract from `published_parsed` / `updated_parsed` (YYYY-MM-DD format)
   - Web scrapers: Default to current date for sources without date info
