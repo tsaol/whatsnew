@@ -1,8 +1,11 @@
 """爬虫模块 - 支持RSS订阅源和网页爬虫"""
 import feedparser
 import hashlib
+import json
+import os
 import re
 import requests
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as dateutil_parse
@@ -704,6 +707,448 @@ class Crawler:
             print(f"  抓取失败 {source_name}: {e}")
             return []
 
+    def fetch_web_github_trending(self, max_items=5, max_days=7):
+        """爬取 GitHub Trending (最近7天高星项目)"""
+        source_name = "GitHub Trending"
+        print(f"正在抓取 {source_name} (GraphQL API) ...")
+
+        token = self._load_github_token()
+        if not token:
+            print(f"  警告: GITHUB_TOKEN 未配置，跳过 {source_name}")
+            return []
+
+        # 计算日期范围
+        days_ago = (datetime.now() - timedelta(days=max_days)).strftime("%Y-%m-%d")
+        search_query = f"created:>{days_ago} sort:stars"
+
+        graphql_query = """
+        query($search_query: String!) {
+          search(query: $search_query, type: REPOSITORY, first: 15) {
+            edges {
+              node {
+                ... on Repository {
+                  nameWithOwner
+                  url
+                  description
+                  stargazerCount
+                  createdAt
+                  primaryLanguage {
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "User-Agent": "WhatsNew-Crawler"
+        }
+
+        try:
+            resp = requests.post(
+                "https://api.github.com/graphql",
+                json={"query": graphql_query, "variables": {"search_query": search_query}},
+                headers=headers,
+                timeout=30
+            )
+
+            if resp.status_code != 200:
+                print(f"  GitHub API 返回 {resp.status_code}")
+                return []
+
+            data = resp.json()
+            if "errors" in data:
+                print(f"  GraphQL 错误: {data['errors']}")
+                return []
+
+            new_items = []
+            edges = data.get("data", {}).get("search", {}).get("edges", [])
+
+            for edge in edges:
+                node = edge.get("node")
+                if not node:
+                    continue
+
+                repo_url = node.get("url", "")
+                item_id = self._generate_id(repo_url)
+
+                if self.storage.is_sent(item_id):
+                    continue
+
+                owner_repo = node.get("nameWithOwner", "")
+                description = node.get("description") or "(No description)"
+                stars = node.get("stargazerCount", 0)
+                language = node.get("primaryLanguage", {})
+                lang_name = language.get("name", "Unknown") if language else "Unknown"
+                created_at = node.get("createdAt", "")[:10]
+
+                # 关键词过滤
+                title = f"{owner_repo} - {description[:80]}"
+                summary = f"Stars: {stars} | Lang: {lang_name} | {description}"
+                if not self._should_include(title, summary, source_name):
+                    continue
+
+                item = {
+                    'id': item_id,
+                    'title': title,
+                    'link': repo_url,
+                    'summary': summary,
+                    'published': created_at,
+                    'source': source_name
+                }
+
+                new_items.append(item)
+                if len(new_items) >= max_items:
+                    break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  抓取失败 {source_name}: {e}")
+            return []
+
+    def fetch_web_producthunt(self, max_items=5, max_days=2):
+        """爬取 Product Hunt (每日热门产品)"""
+        source_name = "Product Hunt"
+        print(f"正在抓取 {source_name} ...")
+
+        token = self._load_producthunt_token()
+
+        # 策略1: 使用 GraphQL API (需要 token)
+        if token:
+            print(f"  使用 GraphQL API...")
+            try:
+                items = self._fetch_producthunt_api(token, max_items)
+                if items:
+                    return items
+            except Exception as e:
+                print(f"  API 失败: {e}, 尝试 Hydration 提取...")
+
+        # 策略2: Next.js Hydration 提取 (无需 token)
+        print(f"  使用 Hydration 提取...")
+        return self._fetch_producthunt_hydration(max_items)
+
+    def _fetch_producthunt_api(self, token, max_items):
+        """Product Hunt GraphQL API"""
+        query = """
+        query {
+          posts(first: %d, order: VOTES) {
+            edges {
+              node {
+                name
+                tagline
+                url
+                votesCount
+                slug
+                topics {
+                  edges {
+                    node {
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """ % (max_items * 2)
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
+        resp = requests.post(
+            "https://api.producthunt.com/v2/api/graphql",
+            json={"query": query},
+            headers=headers,
+            timeout=15
+        )
+
+        data = resp.json()
+        new_items = []
+
+        if "data" in data and "posts" in data["data"]:
+            for edge in data["data"]["posts"]["edges"]:
+                node = edge["node"]
+                slug = node.get("slug")
+                ph_url = f"https://www.producthunt.com/posts/{slug}" if slug else node.get("url", "")
+
+                item_id = self._generate_id(ph_url)
+                if self.storage.is_sent(item_id):
+                    continue
+
+                name = node.get("name", "")
+                tagline = node.get("tagline", "")
+                votes = node.get("votesCount", 0)
+                topics = [t["node"]["name"] for t in node.get("topics", {}).get("edges", [])][:3]
+
+                title = f"{name} - {tagline}"
+                summary = f"Votes: {votes} | Topics: {', '.join(topics) if topics else 'N/A'}"
+
+                # 关键词过滤
+                if not self._should_include(title, summary, "Product Hunt"):
+                    continue
+
+                item = {
+                    'id': item_id,
+                    'title': title,
+                    'link': ph_url,
+                    'summary': summary,
+                    'published': datetime.now().strftime('%Y-%m-%d'),
+                    'source': "Product Hunt"
+                }
+
+                new_items.append(item)
+                if len(new_items) >= max_items:
+                    break
+
+        print(f"  找到 {len(new_items)} 条新内容")
+        return new_items
+
+    def _fetch_producthunt_hydration(self, max_items):
+        """从 Product Hunt 首页提取 __NEXT_DATA__"""
+        try:
+            resp = requests.get(
+                "https://www.producthunt.com/",
+                headers=self.headers,
+                timeout=15
+            )
+
+            # 检查是否被 Cloudflare 阻止
+            if resp.status_code == 403:
+                print(f"  被 Cloudflare 阻止 (403)，建议配置 PRODUCTHUNT_TOKEN")
+                return []
+
+            # 提取 __NEXT_DATA__
+            match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.+?)</script>', resp.text)
+            if not match:
+                print(f"  未找到 __NEXT_DATA__，建议配置 PRODUCTHUNT_TOKEN")
+                return []
+
+            data = json.loads(match.group(1))
+            apollo_state = data.get("props", {}).get("pageProps", {}).get("apolloState", {})
+
+            # 提取 Post 对象
+            all_posts = []
+            for key, value in apollo_state.items():
+                if key.startswith("Post:") and isinstance(value, dict):
+                    if "name" in value and "votesCount" in value:
+                        all_posts.append(value)
+
+            # 按投票数排序
+            all_posts.sort(key=lambda x: x.get("votesCount", 0), reverse=True)
+
+            new_items = []
+            for post in all_posts:
+                slug = post.get("slug")
+                ph_url = f"https://www.producthunt.com/posts/{slug}" if slug else ""
+
+                if not ph_url:
+                    continue
+
+                item_id = self._generate_id(ph_url)
+                if self.storage.is_sent(item_id):
+                    continue
+
+                name = post.get("name", "Unknown")
+                tagline = post.get("tagline", "")
+                votes = post.get("votesCount", 0)
+
+                title = f"{name} - {tagline}"
+                summary = f"Votes: {votes}"
+
+                # 关键词过滤
+                if not self._should_include(title, summary, "Product Hunt"):
+                    continue
+
+                item = {
+                    'id': item_id,
+                    'title': title,
+                    'link': ph_url,
+                    'summary': summary,
+                    'published': datetime.now().strftime('%Y-%m-%d'),
+                    'source': "Product Hunt"
+                }
+
+                new_items.append(item)
+                if len(new_items) >= max_items:
+                    break
+
+            print(f"  找到 {len(new_items)} 条新内容")
+            return new_items
+
+        except Exception as e:
+            print(f"  Hydration 提取失败: {e}")
+            return []
+
+    def fetch_web_hn_blogs(self, max_items=5, max_days=2):
+        """爬取 HN Top Blogs (技术博客精选)"""
+        source_name = "HN Blog"
+        print(f"正在抓取 {source_name} (OPML) ...")
+
+        # OPML 源
+        opml_url = "https://gist.githubusercontent.com/emschwartz/e6d2bf860ccc367fe37ff953ba6de66b/raw/hn-popular-blogs-2025.opml"
+
+        # Fallback 博客列表
+        fallback_feeds = [
+            {"title": "Simon Willison", "rss": "https://simonwillison.net/atom/everything/"},
+            {"title": "Mitchell Hashimoto", "rss": "https://mitchellh.com/feed.xml"},
+            {"title": "antirez", "rss": "http://antirez.com/rss"},
+            {"title": "Paul Graham", "rss": "http://www.aaronsw.com/2002/feeds/pgessays.rss"},
+            {"title": "Pluralistic", "rss": "https://pluralistic.net/feed/"},
+        ]
+
+        # 获取博客列表
+        blogs = []
+        try:
+            resp = requests.get(opml_url, headers=self.headers, timeout=10)
+            if resp.status_code == 200:
+                # 解析 OPML
+                pattern = r'<outline[^>]+type="rss"[^>]*>'
+                for match in re.finditer(pattern, resp.text):
+                    outline = match.group(0)
+                    text_match = re.search(r'text="([^"]+)"', outline)
+                    xml_url_match = re.search(r'xmlUrl="([^"]+)"', outline)
+                    if text_match and xml_url_match:
+                        blogs.append({
+                            "title": text_match.group(1),
+                            "rss": xml_url_match.group(1)
+                        })
+                print(f"  从 OPML 获取 {len(blogs)} 个博客")
+        except Exception as e:
+            print(f"  OPML 获取失败: {e}")
+
+        if not blogs:
+            print(f"  使用 Fallback 博客列表")
+            blogs = fallback_feeds
+
+        # 抓取 RSS
+        cutoff_date = datetime.now() - timedelta(days=max_days)
+        new_items = []
+        max_blogs = 15  # 限制抓取博客数量
+
+        for blog in blogs[:max_blogs]:
+            try:
+                feed_resp = requests.get(blog["rss"], headers=self.headers, timeout=10)
+                if feed_resp.status_code != 200:
+                    continue
+
+                # 解析 RSS/Atom
+                articles = self._parse_blog_feed(feed_resp.text, blog["title"], cutoff_date)
+                for article in articles[:2]:  # 每个博客最多2篇
+                    item_id = self._generate_id(article['link'])
+                    if self.storage.is_sent(item_id):
+                        continue
+
+                    # 关键词过滤
+                    if not self._should_include(article['title'], article['summary'], f"HN Blog: {blog['title']}"):
+                        continue
+
+                    item = {
+                        'id': item_id,
+                        'title': article['title'],
+                        'link': article['link'],
+                        'summary': article['summary'][:500],
+                        'published': article['published'],
+                        'source': f"HN Blog: {blog['title']}"
+                    }
+
+                    new_items.append(item)
+                    if len(new_items) >= max_items:
+                        break
+
+            except Exception:
+                continue
+
+            if len(new_items) >= max_items:
+                break
+
+        print(f"  找到 {len(new_items)} 条新内容")
+        return new_items
+
+    def _parse_blog_feed(self, feed_content, blog_title, cutoff_date):
+        """解析 RSS/Atom feed"""
+        articles = []
+        try:
+            root = ET.fromstring(feed_content)
+
+            # Atom feed
+            if 'atom' in root.tag.lower() or root.tag == '{http://www.w3.org/2005/Atom}feed':
+                ns = {'atom': 'http://www.w3.org/2005/Atom'}
+                entries = root.findall('.//atom:entry', ns) or root.findall('.//entry')
+                for entry in entries[:5]:
+                    title = entry.find('atom:title', ns) or entry.find('title')
+                    link = entry.find('atom:link[@rel="alternate"]', ns) or entry.find('atom:link', ns) or entry.find('link')
+                    published = entry.find('atom:published', ns) or entry.find('atom:updated', ns) or entry.find('published') or entry.find('updated')
+                    summary = entry.find('atom:summary', ns) or entry.find('atom:content', ns) or entry.find('summary') or entry.find('content')
+
+                    title_text = title.text if title is not None and title.text else "Untitled"
+                    link_href = link.get('href', '') if link is not None else ""
+                    pub_text = published.text[:10] if published is not None and published.text else ""
+                    content_text = self._clean_html(summary.text) if summary is not None and summary.text else ""
+
+                    # 日期过滤
+                    if pub_text:
+                        try:
+                            pub_datetime = datetime.fromisoformat(pub_text.replace('Z', '+00:00').split('T')[0])
+                            if pub_datetime < cutoff_date:
+                                continue
+                        except:
+                            pass
+
+                    if title_text and link_href:
+                        articles.append({
+                            'title': title_text,
+                            'link': link_href,
+                            'published': pub_text,
+                            'summary': content_text or title_text
+                        })
+
+            # RSS 2.0
+            else:
+                items = root.findall('.//item')
+                for item in items[:5]:
+                    title = item.find('title')
+                    link = item.find('link')
+                    pub_date = item.find('pubDate')
+                    description = item.find('description')
+
+                    title_text = title.text if title is not None and title.text else "Untitled"
+                    link_text = link.text if link is not None and link.text else ""
+                    pub_text = ""
+                    if pub_date is not None and pub_date.text:
+                        # 解析 RFC 822 日期
+                        try:
+                            parsed = dateutil_parse(pub_date.text)
+                            pub_text = parsed.strftime('%Y-%m-%d')
+                            if parsed.replace(tzinfo=None) < cutoff_date:
+                                continue
+                        except:
+                            pub_text = pub_date.text[:16]
+
+                    content_text = self._clean_html(description.text) if description is not None and description.text else ""
+
+                    if title_text and link_text:
+                        articles.append({
+                            'title': title_text,
+                            'link': link_text,
+                            'published': pub_text,
+                            'summary': content_text or title_text
+                        })
+
+        except ET.ParseError:
+            pass
+        except Exception:
+            pass
+
+        return articles
+
     def fetch_all(self, sources, max_items=5, max_days=2):
         """抓取所有新闻源"""
         all_items = []
@@ -740,6 +1185,12 @@ class Crawler:
                     items = self.fetch_web_36kr_ai(max_items, max_days)
                 elif web_func == 'jiqizhixin':
                     items = self.fetch_web_jiqizhixin(max_items, max_days)
+                elif web_func == 'github_trending':
+                    items = self.fetch_web_github_trending(max_items, max_days)
+                elif web_func == 'producthunt':
+                    items = self.fetch_web_producthunt(max_items, max_days)
+                elif web_func == 'hn_blogs':
+                    items = self.fetch_web_hn_blogs(max_items, max_days)
                 else:
                     print(f"  未知的爬虫函数: {web_func}")
                     items = []
@@ -835,6 +1286,62 @@ class Crawler:
             print(f"  [内容过滤] 移除 {removed_count} 条非技术/低价值内容")
 
         return filtered_items
+
+    def _load_github_token(self):
+        """加载 GitHub Token"""
+        # 环境变量优先
+        token = os.environ.get("GITHUB_TOKEN")
+        if token:
+            return token
+
+        # 尝试从 .env 文件加载
+        env_paths = [
+            os.path.join(os.path.dirname(__file__), "..", ".env"),
+            os.path.join(os.getcwd(), ".env"),
+        ]
+        for env_path in env_paths:
+            if os.path.exists(env_path):
+                try:
+                    with open(env_path, "r", encoding="utf-8-sig") as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith("#"):
+                                continue
+                            if "GITHUB_TOKEN=" in line:
+                                return line.split("=", 1)[1].strip()
+                            # 支持裸 token 格式
+                            if line.startswith("ghp_") or line.startswith("github_pat_"):
+                                return line
+                except Exception:
+                    pass
+        return None
+
+    def _load_producthunt_token(self):
+        """加载 Product Hunt Token"""
+        # 环境变量优先
+        token = os.environ.get("PRODUCTHUNT_TOKEN")
+        if token:
+            return token
+
+        # 尝试从 .env 文件加载
+        env_paths = [
+            os.path.join(os.path.dirname(__file__), "..", ".env"),
+            os.path.join(os.getcwd(), ".env"),
+        ]
+        for env_path in env_paths:
+            if os.path.exists(env_path):
+                try:
+                    with open(env_path, "r", encoding="utf-8-sig") as f:
+                        for line in f:
+                            if "PRODUCTHUNT_TOKEN" in line:
+                                parts = line.strip().split("=", 1)
+                                if len(parts) == 2:
+                                    token = parts[1].strip().strip('"').strip("'")
+                                    if token:
+                                        return token
+                except Exception:
+                    pass
+        return None
 
     def _generate_id(self, text):
         """生成唯一ID"""
