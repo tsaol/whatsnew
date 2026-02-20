@@ -1159,12 +1159,14 @@ class Crawler:
 
             source_type = source.get('type', 'rss')
             source_name = source.get('name', '')
+            # 支持单个源配置 max_items（用于限制 arXiv 等高产源）
+            source_max_items = source.get('max_items', max_items)
 
             if source_type == 'rss':
                 items = self.fetch_rss(
                     source['url'],
                     source_name,
-                    max_items,
+                    source_max_items,
                     max_days
                 )
                 all_items.extend(items)
