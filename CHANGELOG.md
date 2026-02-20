@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **New Data Sources**: GitHub Trending, Product Hunt, HN Top Blogs (#27)
+  - GitHub Trending: GraphQL API, requires `GITHUB_TOKEN`
+  - Product Hunt: GraphQL API with Hydration fallback
+  - HN Top Blogs: OPML feed aggregation with 5 fallback blogs
+  - Hacker News RSS enabled with keyword filtering
+- **"This Week's Discoveries" Section**: New email section for GitHub Trending & Product Hunt (#28)
+  - Two-column layout: ⭐ Open Source + 🚀 Product Discoveries
+  - Placed after "30-second Quick Read" section
+  - Auto-hides when no new content available
+- **Per-Source max_items Config**: Individual sources can now override global max_items (#28)
+  - Example: `max_items: 4` for arXiv sources to reduce paper ratio
 - **Content Hub Module**: New `hub/` directory for full-text storage and semantic search
   - OpenSearch Serverless for vector + full-text search
   - Cohere Multilingual v3 embedding (optimized for Chinese + English)
