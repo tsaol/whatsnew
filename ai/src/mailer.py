@@ -754,8 +754,9 @@ class Mailer:
                 <div id="toc" style="padding: 16px 32px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 600;">快速导航</div>
                     <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        <a href="#commentary" style="background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">开篇评论</a>
                         <a href="#quickread" style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">30秒速读</a>
+                        <a href="#discoveries" style="background: #fce7f3; color: #be185d; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">本周新星</a>
+                        <a href="#commentary" style="background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">开篇评论</a>
                         <a href="#topnews" style="background: #fee2e2; color: #b91c1c; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">本日要闻</a>
                         <a href="#actions" style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">行动建议</a>
                         <a href="#spotlight" style="background: #fef9c3; color: #854d0e; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">深度专题</a>
@@ -793,6 +794,71 @@ class Mailer:
                             <span style="font-size: 14px; color: #78350f; font-weight: 500;">→ {one_liner}</span>
                         </div>
                     """
+            html += """
+                    </div>
+                </div>
+            """
+
+        # 本周新星区域 - 展示 GitHub Trending 和 Product Hunt
+        github_items = [item for item in items if item.get('source') == 'GitHub Trending'][:3]
+        ph_items = [item for item in items if item.get('source') == 'Product Hunt'][:3]
+
+        if github_items or ph_items:
+            html += """
+                <div id="discoveries" style="padding: 24px 32px; background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border-bottom: 1px solid #f9a8d4;">
+                    <div class="section-header">
+                        <span class="section-badge" style="background: linear-gradient(135deg, #db2777 0%, #be185d 100%);">🔥 本周新星</span>
+                        <span class="section-title">开源项目 & 新产品发现</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+            """
+
+            # GitHub Trending 列
+            if github_items:
+                html += """
+                        <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #f9a8d4;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-size: 18px;">⭐</span>
+                                <span style="font-weight: 700; color: #831843;">开源热门</span>
+                            </div>
+                """
+                for item in github_items:
+                    title = item.get('title', '')[:50]
+                    link = item.get('link', '#')
+                    summary = item.get('summary', '')[:60]
+                    html += f"""
+                            <div style="padding: 10px 0; border-bottom: 1px solid #fce7f3;">
+                                <a href="{link}" target="_blank" style="color: #be185d; text-decoration: none; font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">{title}</a>
+                                <div style="font-size: 11px; color: #9d174d;">{summary}</div>
+                            </div>
+                    """
+                html += """
+                        </div>
+                """
+
+            # Product Hunt 列
+            if ph_items:
+                html += """
+                        <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #f9a8d4;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-size: 18px;">🚀</span>
+                                <span style="font-weight: 700; color: #831843;">产品发现</span>
+                            </div>
+                """
+                for item in ph_items:
+                    title = item.get('title', '')[:50]
+                    link = item.get('link', '#')
+                    summary = item.get('summary', '')[:60]
+                    html += f"""
+                            <div style="padding: 10px 0; border-bottom: 1px solid #fce7f3;">
+                                <a href="{link}" target="_blank" style="color: #be185d; text-decoration: none; font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">{title}</a>
+                                <div style="font-size: 11px; color: #9d174d;">{summary}</div>
+                            </div>
+                    """
+                html += """
+                        </div>
+                """
+
             html += """
                     </div>
                 </div>
