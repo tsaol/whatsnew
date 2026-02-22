@@ -1,8 +1,90 @@
 """测试运行一次"""
+import sys
+from pathlib import Path
 from src.config import Config
 from src.storage import Storage
 from src.crawler import Crawler
 from src.mailer import Mailer
+
+
+def index_to_hub(items, config):
+    """将新闻索引到 Content Hub"""
+    hub_enabled = config.get('hub.enabled', True)
+    if not hub_enabled:
+        print("[Hub] Content Hub 已禁用，跳过索引")
+        return
+
+    try:
+        # 添加 hub 模块路径
+        hub_path = Path(__file__).parent.parent / 'hub'
+        if hub_path.exists():
+            sys.path.insert(0, str(hub_path))
+            from src.config import Config as HubConfig
+            from src.storage import ContentStorage
+            from src.fetcher import ContentFetcher
+            from src.browser_fetcher import BrowserFetcher
+
+            print("\n[Hub] 开始索引到 Content Hub...")
+            hub_config = HubConfig()
+            storage = ContentStorage(hub_config)
+            fetcher = ContentFetcher(hub_config)
+            browser_fetcher = BrowserFetcher(hub_config)
+
+            success = 0
+            captured = 0
+            for item in items:
+                url = item.get('link')
+                if not url:
+                    continue
+
+                # 检查是否已存在
+                article_id = fetcher._generate_id(url)
+                if storage.exists(article_id):
+                    continue
+
+                metadata = {
+                    'title': item.get('title'),
+                    'source': item.get('source'),
+                    'category': item.get('category'),
+                    'published': item.get('published')
+                }
+
+                # 1. 抓取全文并索引到 OpenSearch (快速)
+                article = fetcher.fetch_full_content(url, metadata=metadata)
+
+                if article and storage.add_article(article):
+                    storage.save_to_s3(article)
+                    success += 1
+
+                    # 2. 完整抓取保存到 S3 (截图 + HTML + 图片)
+                    try:
+                        result = browser_fetcher.capture(
+                            url,
+                            metadata=metadata,
+                            save_screenshot=True,
+                            save_html=True,
+                            save_images=True,
+                            save_to_s3=True
+                        )
+                        if result:
+                            captured += 1
+                            # 更新 OpenSearch 中的快照路径
+                            storage.update_snapshot(article_id, {
+                                'folder_name': result.get('folder_name', ''),
+                                'screenshot_s3': result.get('screenshot_s3', ''),
+                                'html_s3': result.get('html_s3', ''),
+                                'images_s3': result.get('images_s3', [])
+                            })
+                    except Exception as e:
+                        print(f"[Hub] 完整抓取失败 {url}: {e}")
+
+            print(f"[Hub] 索引完成: {success}/{len(items)} 篇")
+            print(f"[Hub] 完整抓取: {captured}/{success} 篇")
+        else:
+            print("[Hub] hub 模块未找到，跳过索引")
+    except Exception as e:
+        print(f"[Hub] 索引失败: {e}")
+
 
 print("测试运行 WhatsNew...")
 print("="*50)
@@ -71,6 +153,9 @@ if new_items:
         # 保存到 S3
         s3_config = config.get('s3', {})
         storage.save_to_s3(content, new_items, ai_analysis, s3_config)
+
+        # 索引到 Content Hub
+        index_to_hub(new_items, config)
 else:
     print("没有新内容")
 
