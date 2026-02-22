@@ -1158,18 +1158,17 @@ class Mailer:
                 </div>
             """
 
-        # 完整新闻 - 按来源类型分组（双栏布局）
+        # 完整新闻 - 按具体来源分组（多栏布局）
         html += """
             <div id="newslist" class="news-section">
                 <h2 class="news-section-title">完整新闻列表</h2>
         """
 
-        # 按来源类型分组
-        grouped_by_source_type = defaultdict(list)
+        # 按具体来源分组
+        grouped_by_source = defaultdict(list)
         for item in items:
-            source = item.get('source', '')
-            group_name = get_source_type_group(source)
-            grouped_by_source_type[group_name].append(item)
+            source = item.get('source', '未知来源')
+            grouped_by_source[source].append(item)
 
         # 获取 TOP 新闻的 ID
         top_ids = set()
@@ -1178,35 +1177,63 @@ class Mailer:
                 if 'id' in top_item:
                     top_ids.add(top_item['id'])
 
-        # 按两列排列分组
-        html += '<div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px;">'
+        # 来源排序：按新闻数量降序，确保内容多的来源优先显示
+        sorted_sources = sorted(grouped_by_source.keys(), key=lambda s: len(grouped_by_source[s]), reverse=True)
 
-        for group_info in SOURCE_TYPE_GROUPS:
-            group_name = group_info["name"]
-            group_items = grouped_by_source_type.get(group_name, [])
+        # 为每个来源分配颜色（循环使用）
+        source_colors = [
+            {"color": "#6366f1", "bg": "#eef2ff"},  # 紫色
+            {"color": "#0891b2", "bg": "#ecfeff"},  # 青色
+            {"color": "#ea580c", "bg": "#fff7ed"},  # 橙色
+            {"color": "#059669", "bg": "#ecfdf5"},  # 绿色
+            {"color": "#dc2626", "bg": "#fef2f2"},  # 红色
+            {"color": "#7c3aed", "bg": "#f5f3ff"},  # 紫罗兰
+            {"color": "#0284c7", "bg": "#e0f2fe"},  # 蓝色
+            {"color": "#be185d", "bg": "#fce7f3"},  # 粉色
+        ]
 
-            if not group_items:
-                continue
+        # 来源图标映射
+        source_icons = {
+            "GitHub Trending": "⭐", "GitHub Blog": "🐙", "Product Hunt": "🚀",
+            "LangChain": "🦜", "LlamaIndex": "🦙", "OpenAI": "🤖", "Anthropic": "🧠",
+            "Google AI": "🔍", "DeepMind": "🧬", "Meta AI": "👁️", "Hugging Face": "🤗",
+            "TechCrunch": "📰", "VentureBeat": "📊", "Hacker News": "🔶",
+            "arXiv": "📚", "AWS": "☁️", "Simon Willison": "✍️", "Latent Space": "🎙️",
+            "CrewAI": "👥", "钛媒体": "📱", "36Kr": "💰", "机器之心": "🤖", "新智元": "🧠",
+        }
+
+        # 多栏布局
+        html += '<div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px;">'
+
+        for idx, source_name in enumerate(sorted_sources):
+            source_items = grouped_by_source[source_name]
+            color_info = source_colors[idx % len(source_colors)]
 
             # 分组内按评分排序
-            group_items = sorted(group_items, key=lambda x: x.get('ai_score', 0), reverse=True)
+            source_items = sorted(source_items, key=lambda x: x.get('ai_score', 0), reverse=True)
 
-            # 每个分组占 50% 宽度（移动端 100%）
+            # 获取来源图标
+            icon = "📄"
+            for key, val in source_icons.items():
+                if key in source_name:
+                    icon = val
+                    break
+
+            # 每个来源占 1/3 宽度（移动端 100%）
             html += f"""
-                <div style="flex: 1 1 calc(50% - 8px); min-width: 300px; background: {group_info['bg']}; border-radius: 12px; padding: 16px; border: 1px solid {group_info['color']}20;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid {group_info['color']}30;">
-                        <span style="font-size: 20px;">{group_info['icon']}</span>
-                        <span style="font-weight: 700; color: {group_info['color']}; font-size: 15px;">{group_name}</span>
-                        <span style="margin-left: auto; background: {group_info['color']}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">{len(group_items)}</span>
+                <div style="flex: 1 1 calc(33.33% - 8px); min-width: 220px; background: {color_info['bg']}; border-radius: 12px; padding: 14px; border: 1px solid {color_info['color']}20;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid {color_info['color']}30;">
+                        <span style="font-size: 18px;">{icon}</span>
+                        <span style="font-weight: 700; color: {color_info['color']}; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{source_name}</span>
+                        <span style="margin-left: auto; background: {color_info['color']}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">{len(source_items)}</span>
                     </div>
             """
 
-            for item in group_items:
+            for item in source_items:
                 is_top = item.get('id') in top_ids
-                title = item.get('title', '')[:80]
+                title = item.get('title', '')[:70]
                 title_zh = item.get('title_zh', '')
                 link = item.get('link', '#')
-                source = item.get('source', '')
                 pub_date = format_date(item.get('published', ''))
                 freshness = get_freshness_badge(item.get('published', ''))
 
@@ -1221,55 +1248,26 @@ class Mailer:
                 top_html = '<span style="background: #dc2626; color: white; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-right: 4px;">TOP</span>' if is_top else ''
 
                 html += f"""
-                    <div style="padding: 10px 0; border-bottom: 1px solid {group_info['color']}15;">
+                    <div style="padding: 8px 0; border-bottom: 1px solid {color_info['color']}15;">
                         <div style="margin-bottom: 4px;">
                             {freshness}{top_html}{label_html}
-                            <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-weight: 600; font-size: 13px; line-height: 1.4;">{title}</a>
+                            <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-weight: 600; font-size: 12px; line-height: 1.4;">{title}</a>
                         </div>
-                        {f'<div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">{title_zh[:60]}</div>' if title_zh else ''}
-                        <div style="display: flex; gap: 8px; font-size: 11px; color: #94a3b8;">
-                            <span style="background: #f1f5f9; padding: 1px 6px; border-radius: 3px;">{source}</span>
-                            <span>{pub_date}</span>
-                        </div>
+                        {f'<div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">{title_zh[:50]}...</div>' if title_zh else ''}
+                        <div style="font-size: 10px; color: #94a3b8;">{pub_date}</div>
                     </div>
                 """
 
-            html += "</div>"
-
-        # 处理"其他"分组
-        other_items = grouped_by_source_type.get("其他", [])
-        if other_items:
-            other_items = sorted(other_items, key=lambda x: x.get('ai_score', 0), reverse=True)
-            html += f"""
-                <div style="flex: 1 1 100%; background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
-                        <span style="font-size: 20px;">📋</span>
-                        <span style="font-weight: 700; color: #64748b; font-size: 15px;">其他</span>
-                        <span style="margin-left: auto; background: #64748b; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">{len(other_items)}</span>
-                    </div>
-            """
-            for item in other_items:
-                title = item.get('title', '')[:80]
-                link = item.get('link', '#')
-                source = item.get('source', '')
-                html += f"""
-                    <div style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
-                        <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-size: 13px;">{title}</a>
-                        <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[{source}]</span>
-                    </div>
-                """
             html += "</div>"
 
         html += "</div></div>"
 
         # 页脚
-        group_count = len([g for g in SOURCE_TYPE_GROUPS if grouped_by_source_type.get(g["name"])])
-        if grouped_by_source_type.get("其他"):
-            group_count += 1
+        source_count = len(grouped_by_source)
         html += f"""
                 <div class="footer">
                     <p class="footer-text">
-                        共 {group_count} 个分类 · {len(items)} 条新闻
+                        共 {source_count} 个来源 · {len(items)} 条新闻
                     </p>
                 </div>
             </div>
