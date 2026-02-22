@@ -15,20 +15,28 @@ def index_to_hub(items, config):
         return
 
     try:
-        # 添加 hub 模块路径
+        import importlib.util
+
+        # hub 模块路径
         hub_path = Path(__file__).parent.parent / 'hub'
         if hub_path.exists():
-            sys.path.insert(0, str(hub_path))
-            from src.config import Config as HubConfig
-            from src.storage import ContentStorage
-            from src.fetcher import ContentFetcher
-            from src.browser_fetcher import BrowserFetcher
+            # 使用 importlib 从指定路径加载模块，避免与 ai/src 冲突
+            def load_hub_module(name, file_path):
+                spec = importlib.util.spec_from_file_location(name, file_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                return module
+
+            hub_config_mod = load_hub_module('hub_config', hub_path / 'src' / 'config.py')
+            hub_storage_mod = load_hub_module('hub_storage', hub_path / 'src' / 'storage.py')
+            hub_fetcher_mod = load_hub_module('hub_fetcher', hub_path / 'src' / 'fetcher.py')
+            hub_browser_mod = load_hub_module('hub_browser', hub_path / 'src' / 'browser_fetcher.py')
 
             print("\n[Hub] 开始索引到 Content Hub...")
-            hub_config = HubConfig()
-            storage = ContentStorage(hub_config)
-            fetcher = ContentFetcher(hub_config)
-            browser_fetcher = BrowserFetcher(hub_config)
+            hub_config = hub_config_mod.Config()
+            storage = hub_storage_mod.ContentStorage(hub_config)
+            fetcher = hub_fetcher_mod.ContentFetcher(hub_config)
+            browser_fetcher = hub_browser_mod.BrowserFetcher(hub_config)
 
             success = 0
             captured = 0
