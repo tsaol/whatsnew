@@ -830,13 +830,14 @@ class Mailer:
                 summary = item.get('summary', '')
                 summary_zh = item.get('summary_zh', '')
                 pub_date = format_date(item.get('published', ''))
+                freshness = get_freshness_badge(item.get('published', ''))
                 is_agent = item.get('is_agent_related', False)
                 agent_html = '<span style="background: #00205B; color: white; padding: 2px 6px; font-size: 9px; font-weight: 700; margin-right: 6px;">AGENT</span>' if is_agent else ''
 
                 html += f"""
                         <div style="padding: 14px 0; border-bottom: 1px solid #e0e0e0;">
                             <div style="margin-bottom: 6px;">
-                                {agent_html}
+                                {freshness}{agent_html}
                                 <a href="{link}" target="_blank" style="font-family: Georgia, serif; color: #00205B; text-decoration: none; font-size: 14px;">{title}</a>
                             </div>
                             {f'<div style="font-family: Arial, sans-serif; font-size: 12px; color: #666666; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
