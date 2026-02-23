@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Content Hub Web Console** (#42): FastAPI web interface at hub.xcaoliu.com
+  - Article browsing with pagination and filtering by source/category
+  - Multi-mode search: semantic, full-text, hybrid
+  - Article detail view with full content
+  - User authentication with SHA256 + salt password hashing
+  - Session-based login with secure cookies
+  - Responsive Tailwind CSS design
+- **Freshness Badges in Email**: McKinsey-style time indicators
+  - `NEW` (gold) - articles less than 6 hours old
+  - `今日` (blue) - articles from today
+  - `昨日` (gray) - articles from yesterday
+- **Article Summary Display** (#42): List view shows content preview and fetch date
 - **McKinsey Style Email Design** (#48): Complete redesign with consulting report aesthetics
   - Primary color: McKinsey Blue `#00205B`, Accent: Gold `#FDB813`
   - Typography: Georgia (headers) + Arial (body)
@@ -31,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Re-enabled Data Sources** (#39): The Batch, Azure AI Blog, InfoQ AI (English)
 
 ### Fixed
+- **OpenSearch Serverless Compatibility**: Fixed `get_stats()` using count query instead of unsupported `indices.stats`
 - **Content Hub Indexing** (#34): Fixed missing index_to_hub() call in test_once.py
 - **Hub Module Import Conflict** (#35): Use importlib.util for explicit path loading
 

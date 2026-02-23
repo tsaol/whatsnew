@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}搜索: {{ query }} - Content Hub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- 搜索结果标题 -->
+    <div class="mb-6">
+        {% if query %}
+        <h1 class="text-2xl font-bold text-gray-900">
+            搜索结果: "{{ query }}"
+        </h1>
+        <p class="text-sm text-gray-500 mt-2">
+            {% if mode == 'semantic' %}语义搜索{% elif mode == 'fulltext' %}全文搜索{% else %}混合搜索{% endif %}，
+            共 {{ results.total }} 条结果
+        </p>
+        {% else %}
+        <h1 class="text-2xl font-bold text-gray-900">搜索</h1>
+        <p class="text-sm text-gray-500 mt-2">请输入搜索关键词</p>
+        {% endif %}
+    </div>
+
+    <!-- 搜索结果列表 -->
+    {% if results.data %}
+    <div class="bg-white rounded-lg shadow divide-y divide-gray-200">
+        {% for item in results.data %}
+        <a href="/article/{{ item._id }}" class="block hover:bg-gray-50 transition-colors">
+            <div class="px-6 py-4">
+                <h2 class="text-lg font-medium text-gray-900 mb-2">{{ item.title }}</h2>
+
+                <!-- 摘要 -->
+                {% if item.content %}
+                <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ item.content[:150] }}{% if item.content|length > 150 %}...{% endif %}</p>
+                {% endif %}
+
+                <!-- 相关度分数 -->
+                {% if item._score %}
+                <div class="mb-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        相关度: {{ "%.4f" | format(item._score) }}
+                    </span>
+                </div>
+                {% endif %}
+
+                <div class="flex items-center flex-wrap gap-2 text-sm text-gray-500">
+                    {% if item.source %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        {{ item.source }}
+                    </span>
+                    {% endif %}
+                    {% if item.category %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {{ item.category }}
+                    </span>
+                    {% endif %}
+                    {% if item.published_at %}
+                    <span class="text-gray-400">发布: {{ item.published_at[:10] }}</span>
+                    {% endif %}
+                    {% if item.fetched_at %}
+                    <span class="text-gray-400">| 收录: {{ item.fetched_at[:10] }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- 分页 -->
+    {% if results.pages > 1 %}
+    <div class="mt-6 flex items-center justify-center space-x-4">
+        {% if page > 1 %}
+        <a href="/search?q={{ query }}&mode={{ mode }}&page={{ page - 1 }}&size={{ size }}{% if current_source %}&source={{ current_source }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}"
+           class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            上一页
+        </a>
+        {% endif %}
+
+        <span class="text-sm text-gray-500">
+            第 {{ page }} / {{ results.pages }} 页
+        </span>
+
+        {% if page < results.pages %}
+        <a href="/search?q={{ query }}&mode={{ mode }}&page={{ page + 1 }}&size={{ size }}{% if current_source %}&source={{ current_source }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}"
+           class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            下一页
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% elif query %}
+    <!-- 无结果 -->
+    <div class="bg-white rounded-lg shadow px-6 py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">未找到结果</h3>
+        <p class="mt-2 text-sm text-gray-500">
+            没有找到与 "{{ query }}" 相关的文章，请尝试其他关键词。
+        </p>
+    </div>
+    {% else %}
+    <!-- 搜索提示 -->
+    <div class="bg-white rounded-lg shadow px-6 py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">开始搜索</h3>
+        <p class="mt-2 text-sm text-gray-500">
+            在顶部搜索框输入关键词，选择搜索模式后点击搜索按钮。
+        </p>
+        <div class="mt-4 text-sm text-gray-500">
+            <p><strong>语义搜索</strong>: 基于含义的智能搜索</p>
+            <p><strong>全文搜索</strong>: 精确匹配关键词</p>
+            <p><strong>混合搜索</strong>: 结合两种模式</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

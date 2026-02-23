@@ -1,0 +1,143 @@
+/* Content Hub 自定义样式 */
+
+/* 文章摘要 - 限制两行显示 */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 文章内容样式 */
+.article-content {
+    line-height: 1.8;
+    color: #374151;
+}
+
+.article-content p {
+    margin-bottom: 1rem;
+}
+
+/* 链接悬停效果 */
+a {
+    transition: color 0.15s ease-in-out;
+}
+
+/* 卡片悬停阴影 */
+.shadow:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    /* 移动端隐藏侧边栏 */
+    aside {
+        display: none;
+    }
+
+    /* 移动端搜索框调整 */
+    header form {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    header form select {
+        width: 100%;
+    }
+}
+
+/* 加载动画 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 标签样式 */
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.tag-source {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
+.tag-category {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+/* Prose 样式覆盖 */
+.prose {
+    max-width: none;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+    color: #111827;
+    font-weight: 600;
+}
+
+.prose p {
+    color: #374151;
+}
+
+.prose a {
+    color: #4f46e5;
+    text-decoration: underline;
+}
+
+.prose a:hover {
+    color: #4338ca;
+}
+
+.prose code {
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+
+.prose pre {
+    background-color: #1f2937;
+    color: #f3f4f6;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+.prose pre code {
+    background-color: transparent;
+    padding: 0;
+}

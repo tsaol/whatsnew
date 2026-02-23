@@ -4,3 +4,10 @@ trafilatura>=1.6.0
 boto3
 pyyaml
 requests
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+jinja2>=3.1.0
+python-multipart>=0.0.6
+itsdangerous>=2.1.0

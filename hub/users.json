@@ -1,0 +1,11 @@
+{
+  "users": {
+    "cc6776": {
+      "password": "1a9717ecc7721d512521935bfc98d8e2862f2419e5799f12e0ac6712affdbe73",
+      "salt": "2134439f12c99370cf054ef3bdb8e3dd",
+      "hashed": true,
+      "name": "cc6776"
+    }
+  },
+  "session_secret": "content-hub-secret-key-2026-xcaoliu-secure"
+}

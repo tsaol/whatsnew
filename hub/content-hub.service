@@ -1,0 +1,15 @@
+[Unit]
+Description=Content Hub Web Console
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/codes/whatsnew/hub
+ExecStart=/usr/bin/python3 /home/ubuntu/codes/whatsnew/hub/web.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -366,12 +366,12 @@ class ContentStorage:
             return {'status': 'not_initialized'}
 
         try:
-            stats = self.client.indices.stats(index=self.index_name)
+            # OpenSearch Serverless 不支持 indices.stats，使用 count 查询
+            count_response = self.client.count(index=self.index_name)
             return {
                 'status': 'ok',
                 'index': self.index_name,
-                'doc_count': stats['indices'][self.index_name]['primaries']['docs']['count'],
-                'size_bytes': stats['indices'][self.index_name]['primaries']['store']['size_in_bytes']
+                'doc_count': count_response.get('count', 0)
             }
         except Exception as e:
             return {'status': 'error', 'error': str(e)}

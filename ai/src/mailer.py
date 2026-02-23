@@ -128,7 +128,7 @@ def format_date(date_str):
 
 
 def get_freshness_badge(date_str):
-    """获取时效性标记"""
+    """获取时效性标记 - McKinsey 风格"""
     if not date_str:
         return ""
 
@@ -142,11 +142,14 @@ def get_freshness_badge(date_str):
         hours_ago = (now - dt).total_seconds() / 3600
 
         if hours_ago < 6:
-            return '<span style="background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-right: 6px;">NEW</span>'
+            # NEW - 金色背景，深蓝文字
+            return '<span style="background: #FDB813; color: #00205B; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">NEW</span>'
         elif hours_ago < 24:
-            return '<span style="background: #eab308; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-right: 6px;">今日</span>'
+            # 今日 - 深蓝背景
+            return '<span style="background: #00205B; color: white; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">今日</span>'
         elif hours_ago < 48:
-            return '<span style="background: #94a3b8; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-right: 6px;">昨日</span>'
+            # 昨日 - 浅灰背景
+            return '<span style="background: #e0e0e0; color: #666666; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">昨日</span>'
         else:
             return ""
     except:
@@ -793,13 +796,14 @@ class Mailer:
                 summary = item.get('summary', '')
                 summary_zh = item.get('summary_zh', '')
                 pub_date = format_date(item.get('published', ''))
+                freshness = get_freshness_badge(item.get('published', ''))
                 is_agent = item.get('is_agent_related', False)
                 agent_html = '<span style="background: #00205B; color: white; padding: 2px 6px; font-size: 9px; font-weight: 700; margin-right: 6px;">AGENT</span>' if is_agent else ''
 
                 html += f"""
                         <div style="padding: 14px 0; border-bottom: 1px solid #e8e8e8;">
                             <div style="margin-bottom: 6px;">
-                                {agent_html}
+                                {freshness}{agent_html}
                                 <a href="{link}" target="_blank" style="font-family: Georgia, serif; color: #00205B; text-decoration: none; font-size: 14px;">{title}</a>
                             </div>
                             {f'<div style="font-family: Arial, sans-serif; font-size: 12px; color: #666666; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
@@ -892,9 +896,13 @@ class Mailer:
                 summary_zh = item.get('summary_zh', '')
                 link = item.get('link', '#')
                 pub_date = format_date(item.get('published', ''))
+                freshness = get_freshness_badge(item.get('published', ''))
 
                 # 标签 - McKinsey 风格
                 badges = []
+                # Freshness badge 放最前面
+                if freshness:
+                    badges.append(freshness)
                 if is_top:
                     badges.append('<span style="background: #FDB813; color: #00205B; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">TOP</span>')
                 if item.get('is_agent_related', False):

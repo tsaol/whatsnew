@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}文章列表 - Content Hub{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex gap-8">
+        <!-- 侧边栏过滤器 -->
+        <aside class="w-64 flex-shrink-0">
+            <div class="bg-white rounded-lg shadow p-4 sticky top-8">
+                <!-- 来源过滤 -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">来源</h3>
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="/?size={{ size }}"
+                               class="flex items-center justify-between text-sm {% if not current_source %}text-indigo-600 font-medium{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                <span>全部</span>
+                                <span class="text-gray-400">{{ articles.total }}</span>
+                            </a>
+                        </li>
+                        {% for s in sources %}
+                        <li>
+                            <a href="/?source={{ s.source }}&size={{ size }}{% if current_category %}&category={{ current_category }}{% endif %}"
+                               class="flex items-center justify-between text-sm {% if current_source == s.source %}text-indigo-600 font-medium{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                <span>{{ s.source }}</span>
+                                <span class="text-gray-400">{{ s.count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- 分类过滤 -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">分类</h3>
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="/?size={{ size }}{% if current_source %}&source={{ current_source }}{% endif %}"
+                               class="flex items-center justify-between text-sm {% if not current_category %}text-indigo-600 font-medium{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                <span>全部</span>
+                            </a>
+                        </li>
+                        {% for c in categories %}
+                        <li>
+                            <a href="/?category={{ c.category }}&size={{ size }}{% if current_source %}&source={{ current_source }}{% endif %}"
+                               class="flex items-center justify-between text-sm {% if current_category == c.category %}text-indigo-600 font-medium{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                                <span>{{ c.category }}</span>
+                                <span class="text-gray-400">{{ c.count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <div class="flex-1">
+            <!-- 标题栏 -->
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-gray-900">
+                    文章列表
+                    {% if current_source or current_category %}
+                    <span class="text-lg font-normal text-gray-500">
+                        {% if current_source %}/ {{ current_source }}{% endif %}
+                        {% if current_category %}/ {{ current_category }}{% endif %}
+                    </span>
+                    {% endif %}
+                </h1>
+                <span class="text-sm text-gray-500">共 {{ articles.total }} 篇文章</span>
+            </div>
+
+            <!-- 文章列表 -->
+            <div class="bg-white rounded-lg shadow divide-y divide-gray-200">
+                {% for article in articles.data %}
+                <a href="/article/{{ article._id }}" class="block hover:bg-gray-50 transition-colors">
+                    <div class="px-6 py-4">
+                        <h2 class="text-lg font-medium text-gray-900 mb-2">{{ article.title }}</h2>
+                        {% if article.summary %}
+                        <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ article.summary }}</p>
+                        {% endif %}
+                        <div class="flex items-center flex-wrap gap-2 text-sm text-gray-500">
+                            {% if article.source %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ article.source }}
+                            </span>
+                            {% endif %}
+                            {% if article.category %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                {{ article.category }}
+                            </span>
+                            {% endif %}
+                            {% if article.published_at %}
+                            <span class="text-gray-400">发布: {{ article.published_at[:10] }}</span>
+                            {% endif %}
+                            {% if article.fetched_at %}
+                            <span class="text-gray-400">| 收录: {{ article.fetched_at[:10] }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% else %}
+                <div class="px-6 py-12 text-center text-gray-500">
+                    暂无文章
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 分页 -->
+            {% if articles.pages > 1 %}
+            <div class="mt-6 flex items-center justify-center space-x-4">
+                {% if page > 1 %}
+                <a href="/?page={{ page - 1 }}&size={{ size }}{% if current_source %}&source={{ current_source }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}"
+                   class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    上一页
+                </a>
+                {% endif %}
+
+                <span class="text-sm text-gray-500">
+                    第 {{ page }} / {{ articles.pages }} 页
+                </span>
+
+                {% if page < articles.pages %}
+                <a href="/?page={{ page + 1 }}&size={{ size }}{% if current_source %}&source={{ current_source }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}"
+                   class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    下一页
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
