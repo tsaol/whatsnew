@@ -31,6 +31,12 @@ NEWS_LABELS = {
     "研究": {"color": "#6366f1", "bg": "#eef2ff"},  # 学术论文
 }
 
+# 内容类型标签（用于标记而非过滤）
+CONTENT_TYPE_BADGES = {
+    "corporate": {"label": "企业", "color": "#9ca3af", "bg": "#f3f4f6"},  # 企业新闻
+    "low_value": {"label": "引用", "color": "#9ca3af", "bg": "#f3f4f6"},  # 低价值内容
+}
+
 # 来源类型分组（用于双栏布局）
 SOURCE_TYPE_GROUPS = [
     {
@@ -1100,10 +1106,18 @@ class Mailer:
                 is_agent = item.get('is_agent_related', False)
                 agent_html = '<span style="background: #6366f1; color: white; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-right: 4px;">Agent</span>' if is_agent else ''
 
+                # 企业新闻标记
+                is_corporate = item.get('is_corporate', False)
+                corporate_html = '<span style="background: #f3f4f6; color: #6b7280; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 600; margin-right: 4px;">企业</span>' if is_corporate else ''
+
+                # 低价值内容标记
+                is_low_value = item.get('is_low_value', False)
+                low_value_html = '<span style="background: #f3f4f6; color: #6b7280; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 600; margin-right: 4px;">引用</span>' if is_low_value else ''
+
                 html += f"""
                     <div style="padding: 8px 0; border-bottom: 1px solid {color_info['color']}15;">
                         <div style="margin-bottom: 4px;">
-                            {freshness}{top_html}{agent_html}{label_html}
+                            {freshness}{top_html}{agent_html}{corporate_html}{low_value_html}{label_html}
                             <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-weight: 600; font-size: 12px; line-height: 1.4;">{title}</a>
                         </div>
                         {f'<div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">{title_zh[:50]}...</div>' if title_zh else ''}
