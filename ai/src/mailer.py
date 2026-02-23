@@ -808,55 +808,7 @@ class Mailer:
                         </div>
                     </div>
                 </div>
-
-                <!-- 目录导航 TOC -->
-                <div id="toc" style="padding: 16px 32px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 600;">快速导航</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        <a href="#quickread" style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">30秒速读</a>
-                        <a href="#discoveries" style="background: #fce7f3; color: #be185d; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">本周新星</a>
-                        <a href="#commentary" style="background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">开篇评论</a>
-                        <a href="#topnews" style="background: #fee2e2; color: #b91c1c; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">本日要闻</a>
-                        <a href="#actions" style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">行动建议</a>
-                        <a href="#spotlight" style="background: #fef9c3; color: #854d0e; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">深度专题</a>
-                        <a href="#papers" style="background: #f3e8ff; color: #7c3aed; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">论文精选</a>
-                        <a href="#newslist" style="background: #f1f5f9; color: #475569; padding: 4px 12px; border-radius: 16px; font-size: 12px; text-decoration: none;">完整列表</a>
-                    </div>
-                </div>
         """
-
-        # 30秒速读区域
-        if ai_analysis and ai_analysis.get('one_liners'):
-            one_liners = ai_analysis['one_liners']
-            top_news = ai_analysis.get('top_news', [])[:10]
-            html += """
-                <div id="quickread" style="padding: 24px 32px; background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%); border-bottom: 1px solid #fde047;">
-                    <div class="section-header">
-                        <span class="section-badge" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">30秒速读</span>
-                        <span class="section-title">一句话看懂今日要点</span>
-                    </div>
-                    <div style="display: grid; gap: 8px; margin-top: 16px;">
-            """
-            for idx, news in enumerate(top_news):
-                # 从 scored items 中找到对应的 one_liner
-                one_liner = news.get('oneliner', '')
-                if not one_liner:
-                    # 尝试从 one_liners dict 中获取
-                    for key, val in one_liners.items():
-                        if news.get('title', '') in str(ai_analysis.get('translated_items', [])):
-                            one_liner = val
-                            break
-                if one_liner:
-                    html += f"""
-                        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(255,255,255,0.8); border-radius: 8px;">
-                            <span style="background: #d97706; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">{idx+1}</span>
-                            <span style="font-size: 14px; color: #78350f; font-weight: 500;">→ {one_liner}</span>
-                        </div>
-                    """
-            html += """
-                    </div>
-                </div>
-            """
 
         # 本周新星区域 - 展示 GitHub Trending 和 Product Hunt
         github_items = [item for item in items if item.get('source') == 'GitHub Trending'][:3]
@@ -963,59 +915,6 @@ class Mailer:
                     </div>
                 """
 
-            # 关键趋势
-            if ai_analysis.get('trends'):
-                html += """
-                    <div class="trends-container">
-                        <span class="trends-label">关键趋势</span>
-                        <div class="trends-list">
-                """
-                for trend in ai_analysis['trends']:
-                    html += f'<span class="trend-tag">{trend}</span>'
-                html += """
-                        </div>
-                    </div>
-                """
-
-            # TOP 新闻
-            if ai_analysis.get('top_news'):
-                html += """
-                    <div id="topnews" class="top-news">
-                        <span class="top-news-label">本日要闻 Top 10</span>
-                """
-                for idx, top_item in enumerate(ai_analysis['top_news'][:10], 1):
-                    score = top_item.get('ai_score', top_item.get('score', 'N/A'))
-                    reason = top_item.get('ai_reason', top_item.get('reason', ''))
-                    title = top_item.get('title', '')
-                    title_zh = top_item.get('title_zh', '')
-                    link = top_item.get('link', '#')
-                    source = top_item.get('source', '未知来源')
-                    label = top_item.get('label', '')
-
-                    # 标签样式
-                    label_html = ''
-                    if label and label in NEWS_LABELS:
-                        label_style = NEWS_LABELS[label]
-                        label_html = f'<span style="background: {label_style["bg"]}; color: {label_style["color"]}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">{label}</span>'
-
-                    html += f"""
-                        <div class="top-item">
-                            <div class="top-rank">{idx}</div>
-                            <div class="top-content">
-                                <div style="margin-bottom: 6px;">
-                                    {label_html}
-                                    <a href="{link}" target="_blank" class="top-title">{title}</a>
-                                </div>
-                                {f'<div class="translation">{title_zh}</div>' if title_zh else ''}
-                                <div class="top-meta">
-                                    <span class="source-pill">{source}</span>
-                                </div>
-                                {f'<div class="top-reason">{reason}</div>' if reason else ''}
-                            </div>
-                        </div>
-                    """
-                html += "</div>"
-
             html += "</div>"
 
         # 行动建议区域
@@ -1057,42 +956,6 @@ class Mailer:
                     </div>
                 </div>
             """
-
-        # 热点专题区域
-        if ai_analysis and ai_analysis.get('clusters'):
-            html += """
-                <div class="clusters-section">
-                    <div class="section-header">
-                        <span class="section-badge" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">热点专题</span>
-                        <span class="section-title">相关新闻聚合</span>
-                    </div>
-            """
-            for cluster in ai_analysis['clusters']:
-                topic = cluster.get('topic', '热点专题')
-                summary = cluster.get('summary', '')
-                news_list = cluster.get('news', [])
-
-                html += f"""
-                    <div class="cluster-card">
-                        <div class="cluster-topic">{topic}</div>
-                        <div class="cluster-summary">{summary}</div>
-                        <ul class="cluster-news-list">
-                """
-                for news in news_list[:5]:  # 最多显示5条
-                    title = news.get('title_zh') or news.get('title', '')
-                    link = news.get('link', '#')
-                    source = news.get('source', '')
-                    html += f"""
-                            <li class="cluster-news-item">
-                                <a href="{link}" target="_blank">{title}</a>
-                                <span class="cluster-source">{source}</span>
-                            </li>
-                    """
-                html += """
-                        </ul>
-                    </div>
-                """
-            html += "</div>"
 
         # 论文精选区域（新版：显示领域、难度、可操作建议）
         if ai_analysis and ai_analysis.get('paper_analysis'):
@@ -1136,27 +999,6 @@ class Mailer:
                     </div>
                 """
             html += "</div>"
-
-        # 深度专题区域（简化版）
-        if ai_analysis and ai_analysis.get('spotlight') and ai_analysis['spotlight'].get('title'):
-            spotlight = ai_analysis['spotlight']
-            html += f"""
-                <div id="spotlight" class="spotlight-section" style="padding: 28px 32px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-bottom: 1px solid #fbbf24;">
-                    <div class="section-header">
-                        <span class="section-badge" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">深度专题</span>
-                    </div>
-                    <div style="background: #ffffff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="font-size: 20px; font-weight: 700; color: #78350f; margin-bottom: 16px;">{spotlight.get('title', '')}</h3>
-                        <p style="font-size: 14px; color: #78350f; line-height: 1.7; margin-bottom: 20px;">{spotlight.get('summary', '')}</p>
-                        <div style="padding: 16px; background: #fffbeb; border-radius: 8px;">
-                            <div style="font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 10px;">核心要点</div>
-                            <ul style="margin: 0; padding-left: 20px;">
-                                {''.join([f'<li style="font-size: 14px; color: #451a03; margin-bottom: 6px;">{p}</li>' for p in spotlight.get('key_points', [])])}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            """
 
         # 完整新闻 - 按具体来源分组（多栏布局）
         html += """
