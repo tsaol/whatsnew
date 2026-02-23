@@ -1219,9 +1219,9 @@ class Mailer:
                     icon = val
                     break
 
-            # 每个来源占 1/3 宽度（移动端 100%）
+            # 每个来源占满一行
             html += f"""
-                <div style="flex: 1 1 calc(33.33% - 8px); min-width: 220px; background: {color_info['bg']}; border-radius: 12px; padding: 14px; border: 1px solid {color_info['color']}20;">
+                <div style="flex: 1 1 100%; background: {color_info['bg']}; border-radius: 12px; padding: 14px; margin-bottom: 8px; border: 1px solid {color_info['color']}20;">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid {color_info['color']}30;">
                         <span style="font-size: 18px;">{icon}</span>
                         <span style="font-weight: 700; color: {color_info['color']}; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{source_name}</span>
