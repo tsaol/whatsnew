@@ -1303,8 +1303,8 @@ class Crawler:
         # Newsletter 去重：同一来源的 Newsletter 只保留最新一条
         all_items = self._dedup_newsletters(all_items)
 
-        # 过滤企业新闻（对所有来源）
-        all_items = self._filter_corporate_news(all_items)
+        # 标记企业新闻和低价值内容（不过滤，只打标签）
+        all_items = self._label_content_types(all_items)
 
         # 为没有 is_agent_related 字段的项目添加标签
         agent_count = 0
@@ -1354,8 +1354,8 @@ class Crawler:
         # 合并结果
         return other_items + list(newsletters_by_source.values())
 
-    def _filter_corporate_news(self, items):
-        """过滤企业新闻（人事、政策等非技术内容）和低价值内容"""
+    def _label_content_types(self, items):
+        """标记企业新闻和低价值内容（不过滤，只打标签）"""
         corporate_keywords = [
             'appoints', 'appointed', 'hire', 'hiring', 'joins',
             'office opening', 'headquarters', 'expansion',
@@ -1371,8 +1371,8 @@ class Crawler:
             'rt @',      # Retweet
         ]
 
-        filtered_items = []
-        removed_count = 0
+        corporate_count = 0
+        low_value_count = 0
 
         for item in items:
             title_lower = item.get('title', '').lower()
@@ -1386,22 +1386,25 @@ class Crawler:
             is_low_value = any(pattern in title_lower for pattern in low_value_patterns)
 
             # 检查是否是纯项目链接（标题只有项目名，无描述）
-            # 例如 "user/repo" 格式且标题和摘要相同
             is_bare_link = (
                 '/' in item.get('title', '') and
                 len(item.get('title', '').split()) <= 2 and
                 item.get('title', '') == item.get('summary', '')
             )
 
-            if is_corporate or is_low_value or is_bare_link:
-                removed_count += 1
-            else:
-                filtered_items.append(item)
+            # 打标签而非过滤
+            item['is_corporate'] = is_corporate
+            item['is_low_value'] = is_low_value or is_bare_link
 
-        if removed_count > 0:
-            print(f"  [内容过滤] 移除 {removed_count} 条非技术/低价值内容")
+            if is_corporate:
+                corporate_count += 1
+            if is_low_value or is_bare_link:
+                low_value_count += 1
 
-        return filtered_items
+        if corporate_count > 0 or low_value_count > 0:
+            print(f"  [内容标签] 企业新闻 {corporate_count}, 低价值 {low_value_count}")
+
+        return items
 
     def _load_github_token(self):
         """加载 GitHub Token"""
