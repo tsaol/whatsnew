@@ -117,22 +117,19 @@ class Crawler:
         return False
 
     def _should_include(self, title, summary, source_name):
-        """判断是否应该包含这条新闻"""
-        # 如果没有设置关键词过滤，包含所有
-        if not self.keyword_filter:
-            return True
+        """判断是否应该包含这条新闻 - 现在总是返回 True，不再过滤"""
+        return True
 
-        # Agent 相关源总是包含
+    def _check_agent_related(self, title, summary, source_name):
+        """检查内容是否与 Agent 相关，用于标签而非过滤"""
+        # Agent 相关源总是标记为 Agent 相关
         agent_sources = ['LangChain', 'LlamaIndex', 'CrewAI', 'Semantic Kernel',
                         'Anthropic', 'Simon Willison', 'Latent Space']
         if any(s.lower() in source_name.lower() for s in agent_sources):
             return True
 
         # 检查关键词
-        if self.keyword_filter == 'agent':
-            return self._is_agent_related(title, summary)
-
-        return True
+        return self._is_agent_related(title, summary)
 
     def fetch_rss(self, url, source_name, max_items=5, max_days=2):
         """抓取RSS源"""
@@ -149,7 +146,7 @@ class Crawler:
 
             new_items = []
             filtered_count = 0
-            keyword_filtered = 0
+            agent_related_count = 0
 
             for entry in feed.entries[:max_items * 3]:  # 多抓取一些
                 # 检查发布日期
@@ -174,10 +171,10 @@ class Crawler:
                 title = self._clean_html(entry.get('title', '无标题'))
                 summary = self._extract_summary(entry)
 
-                # 关键词过滤
-                if not self._should_include(title, summary, source_name):
-                    keyword_filtered += 1
-                    continue
+                # 检查是否 Agent 相关 (用于标签，不过滤)
+                is_agent = self._check_agent_related(title, summary, source_name)
+                if is_agent:
+                    agent_related_count += 1
 
                 # 提取发布日期 (优先使用 parsed 格式)
                 pub_date = ''
@@ -197,7 +194,8 @@ class Crawler:
                     'link': entry.get('link', ''),
                     'summary': summary,
                     'published': pub_date,
-                    'source': source_name
+                    'source': source_name,
+                    'is_agent_related': is_agent
                 }
 
                 new_items.append(item)
@@ -209,8 +207,8 @@ class Crawler:
             stats = []
             if filtered_count > 0:
                 stats.append(f"过期 {filtered_count}")
-            if keyword_filtered > 0:
-                stats.append(f"关键词过滤 {keyword_filtered}")
+            if agent_related_count > 0:
+                stats.append(f"Agent相关 {agent_related_count}")
 
             if stats:
                 print(f"  找到 {len(new_items)} 条新内容 ({', '.join(stats)})")
@@ -1307,6 +1305,20 @@ class Crawler:
 
         # 过滤企业新闻（对所有来源）
         all_items = self._filter_corporate_news(all_items)
+
+        # 为没有 is_agent_related 字段的项目添加标签
+        agent_count = 0
+        for item in all_items:
+            if 'is_agent_related' not in item:
+                title = item.get('title', '')
+                summary = item.get('summary', '')
+                source = item.get('source', '')
+                item['is_agent_related'] = self._check_agent_related(title, summary, source)
+            if item.get('is_agent_related'):
+                agent_count += 1
+
+        if agent_count > 0:
+            print(f"\n[Agent标签] 共 {agent_count}/{len(all_items)} 条新闻与 Agent 相关")
 
         return all_items
 
