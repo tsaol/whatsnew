@@ -1089,10 +1089,14 @@ class Mailer:
                 # TOP 标记
                 top_html = '<span style="background: #dc2626; color: white; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-right: 4px;">TOP</span>' if is_top else ''
 
+                # Agent 标记
+                is_agent = item.get('is_agent_related', False)
+                agent_html = '<span style="background: #6366f1; color: white; padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-right: 4px;">Agent</span>' if is_agent else ''
+
                 html += f"""
                     <div style="padding: 8px 0; border-bottom: 1px solid {color_info['color']}15;">
                         <div style="margin-bottom: 4px;">
-                            {freshness}{top_html}{label_html}
+                            {freshness}{top_html}{agent_html}{label_html}
                             <a href="{link}" target="_blank" style="color: #1e293b; text-decoration: none; font-weight: 600; font-size: 12px; line-height: 1.4;">{title}</a>
                         </div>
                         {f'<div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">{title_zh[:50]}...</div>' if title_zh else ''}
