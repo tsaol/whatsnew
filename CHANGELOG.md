@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **McKinsey Style Email Design** (#48): Complete redesign with consulting report aesthetics
+  - Primary color: McKinsey Blue `#00205B`, Accent: Gold `#FDB813`
+  - Typography: Georgia (headers) + Arial (body)
+  - Clean layout with generous whitespace and 2px section borders
+  - Chinese translations displayed below English content
+- **Label Mode for Content Filtering** (#44, #47): Filters converted to labeling system
+  - Agent keyword filter → `[AGENT]` badge (purple → blue)
+  - Corporate news filter → `[企业]` badge (gray)
+  - Low-value content filter → `[引用]` badge (gray)
+  - No content filtered out, all items shown with appropriate labels
+- **Separate GitHub & Product Hunt Sections** (#46): Dedicated full-display sections
+  - `OPEN SOURCE | GitHub Trending` - full item display with translations
+  - `PRODUCTS | Product Hunt` - full item display with translations
+  - Excluded from main news list to avoid duplication
+
+### Changed
+- **Email Layout Simplified** (#41): Removed redundant sections
+  - Removed: 快速导航, 30秒速读, 关键趋势, 本日要闻 Top 10, 热点专题, 深度专题
+  - Focus on: Executive Summary, Key Insights, Action Items, Research, News by Source
+- **Full-Width Source Rows** (#37): Each news source occupies full row width
+- **Re-enabled Data Sources** (#39): The Batch, Azure AI Blog, InfoQ AI (English)
+
+### Fixed
+- **Content Hub Indexing** (#34): Fixed missing index_to_hub() call in test_once.py
+- **Hub Module Import Conflict** (#35): Use importlib.util for explicit path loading
+
+### Added (previous)
 - **New Data Sources**: GitHub Trending, Product Hunt, HN Top Blogs (#27)
   - GitHub Trending: GraphQL API, requires `GITHUB_TOKEN`
   - Product Hunt: GraphQL API with Hydration fallback
