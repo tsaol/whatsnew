@@ -140,7 +140,7 @@ def run_task():
     # 发送邮件
     if new_items:
         print(f"\n共发现 {len(new_items)} 条新内容")
-        subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
+        subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis, all_sources=sources)
 
         if mailer.send(subject, content):
             # 标记为已发送

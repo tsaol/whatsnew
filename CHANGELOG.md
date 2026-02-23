@@ -22,9 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Article Summary Display** (#42): List view shows content preview and fetch date
 - **McKinsey Style Email Design** (#48): Complete redesign with consulting report aesthetics
   - Primary color: McKinsey Blue `#00205B`, Accent: Gold `#FDB813`
-  - Typography: Georgia (headers) + Arial (body)
+  - Typography: Microsoft YaHei / PingFang SC (Chinese-friendly fonts)
   - Clean layout with generous whitespace and 2px section borders
   - Chinese translations displayed below English content
+- **Show All Data Sources** (#50): Display all configured sources even when empty
+  - Sources with content shown with normal styling
+  - Empty sources shown with gray styling and "暂无更新" placeholder
+  - Footer shows `X/Y Sources` (active/total count)
+- **Chinese-Friendly Font** (#49): Replace Georgia/Arial with Microsoft YaHei font stack
+  - Windows: Microsoft YaHei (微软雅黑)
+  - macOS/iOS: PingFang SC (苹方)
+  - Fallback: system sans-serif
 - **Label Mode for Content Filtering** (#44, #47): Filters converted to labeling system
   - Agent keyword filter → `[AGENT]` badge (purple → blue)
   - Corporate news filter → `[企业]` badge (gray)

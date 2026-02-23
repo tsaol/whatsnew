@@ -46,7 +46,7 @@ if new_items and ai_enabled and len(new_items) >= 5:
 
 # 生成邮件内容
 print(f"\n生成邮件 HTML...")
-subject, html_content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
+subject, html_content = mailer.format_news_email(new_items, ai_analysis=ai_analysis, all_sources=sources)
 
 # 保存到文件
 output_file = "email_preview.html"

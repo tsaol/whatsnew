@@ -147,7 +147,7 @@ email_enabled = config.get('email.enabled', True)
 
 if new_items:
     print(f"\n共发现 {len(new_items)} 条新内容")
-    subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis)
+    subject, content = mailer.format_news_email(new_items, ai_analysis=ai_analysis, all_sources=sources)
 
     if not email_enabled:
         print("[跳过] 邮件发送已禁用 (email.enabled: false)")

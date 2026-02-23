@@ -233,8 +233,14 @@ class Mailer:
             print(f"邮件发送失败 (SMTP): {e}")
             return False
 
-    def format_news_email(self, items, ai_analysis=None):
-        """格式化新闻邮件内容 - 现代化设计"""
+    def format_news_email(self, items, ai_analysis=None, all_sources=None):
+        """格式化新闻邮件内容 - 现代化设计
+
+        Args:
+            items: List of news items with content
+            ai_analysis: AI analysis results
+            all_sources: List of all configured sources (for showing empty ones)
+        """
         if not items:
             return None, None
 
@@ -253,7 +259,7 @@ class Mailer:
             <style>
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
                 body {{
-                    font-family: Georgia, "Times New Roman", serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     line-height: 1.6;
                     color: #333333;
                     background: #f5f5f5;
@@ -276,14 +282,14 @@ class Mailer:
                     border-bottom: 4px solid #FDB813;
                 }}
                 .header h1 {{
-                    font-family: Georgia, serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 26px;
                     font-weight: 400;
                     letter-spacing: 1px;
                     margin-bottom: 8px;
                 }}
                 .header .subtitle {{
-                    font-family: Arial, Helvetica, sans-serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 13px;
                     color: rgba(255,255,255,0.8);
                     font-weight: 400;
@@ -291,7 +297,7 @@ class Mailer:
                     text-transform: uppercase;
                 }}
                 .header .date-line {{
-                    font-family: Arial, Helvetica, sans-serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 12px;
                     color: rgba(255,255,255,0.6);
                     margin-top: 12px;
@@ -307,13 +313,13 @@ class Mailer:
                     text-align: left;
                 }}
                 .header .stat-value {{
-                    font-family: Georgia, serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 28px;
                     font-weight: 400;
                     color: #FDB813;
                 }}
                 .header .stat-label {{
-                    font-family: Arial, Helvetica, sans-serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 10px;
                     color: rgba(255,255,255,0.7);
                     text-transform: uppercase;
@@ -333,7 +339,7 @@ class Mailer:
                 .section-badge {{
                     background: #00205B;
                     color: white;
-                    font-family: Arial, Helvetica, sans-serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 10px;
                     font-weight: 700;
                     padding: 4px 10px;
@@ -341,7 +347,7 @@ class Mailer:
                     text-transform: uppercase;
                 }}
                 .section-title {{
-                    font-family: Georgia, serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 18px;
                     font-weight: 400;
                     color: #00205B;
@@ -362,7 +368,7 @@ class Mailer:
                     margin-bottom: 20px;
                 }}
                 .insight-card .label {{
-                    font-family: Arial, Helvetica, sans-serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 11px;
                     font-weight: 700;
                     color: #00205B;
@@ -378,7 +384,7 @@ class Mailer:
                 .insight-list li {{
                     position: relative;
                     padding: 8px 0 8px 20px;
-                    font-family: Georgia, serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 14px;
                     color: #333333;
                     line-height: 1.5;
@@ -400,7 +406,7 @@ class Mailer:
                     padding: 32px 40px;
                 }}
                 .news-section-title {{
-                    font-family: Georgia, serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 18px;
                     font-weight: 400;
                     color: #00205B;
@@ -416,7 +422,7 @@ class Mailer:
                     text-align: center;
                 }}
                 .footer-text {{
-                    font-family: Arial, Helvetica, sans-serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     color: rgba(255,255,255,0.7);
                     font-size: 11px;
                     letter-spacing: 0.5px;
@@ -429,7 +435,7 @@ class Mailer:
                     border-bottom: 1px solid #e0e0e0;
                 }}
                 .commentary-content {{
-                    font-family: Georgia, serif;
+                    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
                     font-size: 14px;
                     line-height: 1.7;
                     color: #333333;
@@ -729,11 +735,11 @@ class Mailer:
                 html += f"""
                         <div style="background: #ffffff; padding: 16px 20px; margin-bottom: 12px; border-left: 3px solid {priority_color};">
                             <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px;">
-                                <span style="font-family: Georgia, serif; font-size: 18px; color: #00205B; font-weight: 400;">{idx}.</span>
-                                <span style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; color: #333333;">{title}</span>
+                                <span style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: 18px; color: #00205B; font-weight: 400;">{idx}.</span>
+                                <span style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; font-weight: 700; color: #333333;">{title}</span>
                             </div>
-                            <div style="font-family: Georgia, serif; font-size: 13px; color: #666666; margin-bottom: 8px; padding-left: 28px;">{reason}</div>
-                            <div style="font-family: Arial, sans-serif; font-size: 12px; color: #00205B; padding: 8px 12px; background: #f0f4f8; margin-left: 28px;">
+                            <div style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: 13px; color: #666666; margin-bottom: 8px; padding-left: 28px;">{reason}</div>
+                            <div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 12px; color: #00205B; padding: 8px 12px; background: #f0f4f8; margin-left: 28px;">
                                 <strong>Next Step:</strong> {action_text}
                             </div>
                         </div>
@@ -762,14 +768,14 @@ class Mailer:
                 html += f"""
                     <div style="padding: 16px 0; border-bottom: 1px solid #e8e8e8;">
                         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                            <span style="font-family: Arial, sans-serif; background: #00205B; color: white; padding: 2px 8px; font-size: 10px; text-transform: uppercase;">{domain}</span>
-                            <span style="font-family: Arial, sans-serif; background: #f0f0f0; color: #666666; padding: 2px 8px; font-size: 10px;">{difficulty}</span>
+                            <span style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #00205B; color: white; padding: 2px 8px; font-size: 10px; text-transform: uppercase;">{domain}</span>
+                            <span style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f0f0f0; color: #666666; padding: 2px 8px; font-size: 10px;">{difficulty}</span>
                         </div>
-                        <div style="font-family: Georgia, serif; font-size: 14px; color: #00205B; margin-bottom: 6px;">
+                        <div style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: 14px; color: #00205B; margin-bottom: 6px;">
                             <a href="{link}" target="_blank" style="color: #00205B; text-decoration: none;">{title_zh or title}</a>
                         </div>
-                        <div style="font-family: Georgia, serif; font-size: 13px; color: #666666; margin-bottom: 8px;">{contribution}</div>
-                        <div style="font-family: Arial, sans-serif; font-size: 11px; color: #333333; padding: 8px 12px; background: #f8f8f8; border-left: 2px solid #FDB813;">
+                        <div style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: 13px; color: #666666; margin-bottom: 8px;">{contribution}</div>
+                        <div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 11px; color: #333333; padding: 8px 12px; background: #f8f8f8; border-left: 2px solid #FDB813;">
                             <strong>Takeaway:</strong> {takeaway}
                         </div>
                     </div>
@@ -804,12 +810,12 @@ class Mailer:
                         <div style="padding: 14px 0; border-bottom: 1px solid #e8e8e8;">
                             <div style="margin-bottom: 6px;">
                                 {freshness}{agent_html}
-                                <a href="{link}" target="_blank" style="font-family: Georgia, serif; color: #00205B; text-decoration: none; font-size: 14px;">{title}</a>
+                                <a href="{link}" target="_blank" style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; color: #00205B; text-decoration: none; font-size: 14px;">{title}</a>
                             </div>
-                            {f'<div style="font-family: Arial, sans-serif; font-size: 12px; color: #666666; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
-                            <div style="font-family: Georgia, serif; font-size: 12px; color: #666666; line-height: 1.5;">{summary}</div>
-                            {f'<div style="font-family: Arial, sans-serif; font-size: 11px; color: #888888; margin-top: 4px;">{summary_zh}</div>' if summary_zh else ''}
-                            <div style="font-family: Arial, sans-serif; font-size: 10px; color: #999999; margin-top: 6px;">{pub_date}</div>
+                            {f'<div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 12px; color: #666666; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
+                            <div style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: 12px; color: #666666; line-height: 1.5;">{summary}</div>
+                            {f'<div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 11px; color: #888888; margin-top: 4px;">{summary_zh}</div>' if summary_zh else ''}
+                            <div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 10px; color: #999999; margin-top: 6px;">{pub_date}</div>
                         </div>
                 """
             html += "</div>"
@@ -838,12 +844,12 @@ class Mailer:
                         <div style="padding: 14px 0; border-bottom: 1px solid #e0e0e0;">
                             <div style="margin-bottom: 6px;">
                                 {freshness}{agent_html}
-                                <a href="{link}" target="_blank" style="font-family: Georgia, serif; color: #00205B; text-decoration: none; font-size: 14px;">{title}</a>
+                                <a href="{link}" target="_blank" style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; color: #00205B; text-decoration: none; font-size: 14px;">{title}</a>
                             </div>
-                            {f'<div style="font-family: Arial, sans-serif; font-size: 12px; color: #666666; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
-                            <div style="font-family: Georgia, serif; font-size: 12px; color: #666666; line-height: 1.5;">{summary}</div>
-                            {f'<div style="font-family: Arial, sans-serif; font-size: 11px; color: #888888; margin-top: 4px;">{summary_zh}</div>' if summary_zh else ''}
-                            <div style="font-family: Arial, sans-serif; font-size: 10px; color: #999999; margin-top: 6px;">{pub_date}</div>
+                            {f'<div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 12px; color: #666666; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
+                            <div style="font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif; font-size: 12px; color: #666666; line-height: 1.5;">{summary}</div>
+                            {f'<div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 11px; color: #888888; margin-top: 4px;">{summary_zh}</div>' if summary_zh else ''}
+                            <div style="font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 10px; color: #999999; margin-top: 6px;">{pub_date}</div>
                         </div>
                 """
             html += "</div>"
@@ -872,76 +878,104 @@ class Mailer:
                 if 'id' in top_item:
                     top_ids.add(top_item['id'])
 
-        # 来源排序：按新闻数量降序
-        sorted_sources = sorted(grouped_by_source.keys(), key=lambda s: len(grouped_by_source[s]), reverse=True)
+        # 获取所有数据源名称（如果提供了 all_sources）
+        if all_sources:
+            all_source_names = [s['name'] for s in all_sources if s.get('enabled', True) and s['name'] not in excluded_sources]
+        else:
+            all_source_names = list(grouped_by_source.keys())
+
+        # 分离有内容和空的数据源
+        sources_with_content = [s for s in all_source_names if s in grouped_by_source]
+        empty_sources = [s for s in all_source_names if s not in grouped_by_source]
+
+        # 排序：有内容的按数量降序，空的保持配置顺序
+        sorted_sources = sorted(sources_with_content, key=lambda s: len(grouped_by_source[s]), reverse=True)
+        sorted_sources.extend(empty_sources)
+
+        # 统计
+        total_sources = len(all_source_names)
+        active_sources = len(sources_with_content)
 
         for idx, source_name in enumerate(sorted_sources):
-            source_items = grouped_by_source[source_name]
+            source_items = grouped_by_source.get(source_name, [])
 
-            # 分组内按评分排序
-            source_items = sorted(source_items, key=lambda x: x.get('ai_score', 0), reverse=True)
+            if source_items:
+                # 分组内按评分排序
+                source_items = sorted(source_items, key=lambda x: x.get('ai_score', 0), reverse=True)
 
-            # 每个来源一个区块
-            html += f"""
-                <div style="margin-bottom: 24px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 2px solid #00205B; margin-bottom: 12px;">
-                        <span style="font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; color: #00205B; text-transform: uppercase; letter-spacing: 1px;">{source_name}</span>
-                        <span style="font-family: Arial, sans-serif; background: #00205B; color: white; padding: 2px 10px; font-size: 11px; font-weight: 600;">{len(source_items)}</span>
-                    </div>
-            """
-
-            for item in source_items:
-                is_top = item.get('id') in top_ids
-                title = item.get('title', '')
-                title_zh = item.get('title_zh', '')
-                summary_zh = item.get('summary_zh', '')
-                link = item.get('link', '#')
-                pub_date = format_date(item.get('published', ''))
-                freshness = get_freshness_badge(item.get('published', ''))
-
-                # 标签 - McKinsey 风格
-                badges = []
-                # Freshness badge 放最前面
-                if freshness:
-                    badges.append(freshness)
-                if is_top:
-                    badges.append('<span style="background: #FDB813; color: #00205B; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">TOP</span>')
-                if item.get('is_agent_related', False):
-                    badges.append('<span style="background: #00205B; color: white; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">AGENT</span>')
-                if item.get('is_corporate', False):
-                    badges.append('<span style="background: #e0e0e0; color: #666666; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">企业</span>')
-                if item.get('is_low_value', False):
-                    badges.append('<span style="background: #e0e0e0; color: #666666; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">引用</span>')
-
-                label = item.get('label', '')
-                if label and label in NEWS_LABELS:
-                    ls = NEWS_LABELS[label]
-                    badges.append(f'<span style="background: {ls["bg"]}; color: {ls["color"]}; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">{label}</span>')
-
-                badges_html = ''.join(badges)
-
+                # 有内容的来源 - 正常样式
                 html += f"""
-                    <div style="padding: 12px 0; border-bottom: 1px solid #e8e8e8;">
-                        <div style="margin-bottom: 6px;">
-                            {badges_html}
-                            <a href="{link}" target="_blank" style="font-family: Georgia, serif; color: #00205B; text-decoration: none; font-size: 13px;">{title}</a>
+                    <div style="margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 2px solid #00205B; margin-bottom: 12px;">
+                            <span style="font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 12px; font-weight: 700; color: #00205B; text-transform: uppercase; letter-spacing: 1px;">{source_name}</span>
+                            <span style="font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: #00205B; color: white; padding: 2px 10px; font-size: 11px; font-weight: 600;">{len(source_items)}</span>
                         </div>
-                        {f'<div style="font-family: Arial, sans-serif; font-size: 12px; color: #666666; margin-bottom: 4px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
-                        {f'<div style="font-family: Georgia, serif; font-size: 11px; color: #888888; margin-top: 4px;">{summary_zh[:100]}...</div>' if summary_zh else ''}
-                        <div style="font-family: Arial, sans-serif; font-size: 10px; color: #999999; margin-top: 6px;">{pub_date}</div>
-                    </div>
                 """
 
-            html += "</div>"
+                for item in source_items:
+                    is_top = item.get('id') in top_ids
+                    title = item.get('title', '')
+                    title_zh = item.get('title_zh', '')
+                    summary_zh = item.get('summary_zh', '')
+                    link = item.get('link', '#')
+                    pub_date = format_date(item.get('published', ''))
+                    freshness = get_freshness_badge(item.get('published', ''))
+
+                    # 标签 - McKinsey 风格
+                    badges = []
+                    # Freshness badge 放最前面
+                    if freshness:
+                        badges.append(freshness)
+                    if is_top:
+                        badges.append('<span style="background: #FDB813; color: #00205B; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">TOP</span>')
+                    if item.get('is_agent_related', False):
+                        badges.append('<span style="background: #00205B; color: white; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-right: 4px;">AGENT</span>')
+                    if item.get('is_corporate', False):
+                        badges.append('<span style="background: #e0e0e0; color: #666666; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">企业</span>')
+                    if item.get('is_low_value', False):
+                        badges.append('<span style="background: #e0e0e0; color: #666666; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">引用</span>')
+
+                    label = item.get('label', '')
+                    if label and label in NEWS_LABELS:
+                        ls = NEWS_LABELS[label]
+                        badges.append(f'<span style="background: {ls["bg"]}; color: {ls["color"]}; padding: 1px 6px; font-size: 9px; font-weight: 600; margin-right: 4px;">{label}</span>')
+
+                    badges_html = ''.join(badges)
+
+                    html += f"""
+                        <div style="padding: 12px 0; border-bottom: 1px solid #e8e8e8;">
+                            <div style="margin-bottom: 6px;">
+                                {badges_html}
+                                <a href="{link}" target="_blank" style="font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif; color: #00205B; text-decoration: none; font-size: 13px;">{title}</a>
+                            </div>
+                            {f'<div style="font-family: Microsoft YaHei, PingFang SC, sans-serif; font-size: 12px; color: #666666; margin-bottom: 4px; padding-left: 12px; border-left: 2px solid #e0e0e0;">{title_zh}</div>' if title_zh else ''}
+                            {f'<div style="font-family: Microsoft YaHei, PingFang SC, Hiragino Sans GB, sans-serif; font-size: 11px; color: #888888; margin-top: 4px;">{summary_zh[:100]}...</div>' if summary_zh else ''}
+                            <div style="font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 10px; color: #999999; margin-top: 6px;">{pub_date}</div>
+                        </div>
+                    """
+
+                html += "</div>"
+            else:
+                # 空数据源 - 灰色样式
+                html += f"""
+                    <div style="margin-bottom: 24px; opacity: 0.6;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #ccc; margin-bottom: 12px;">
+                            <span style="font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 12px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px;">{source_name}</span>
+                            <span style="font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: #f0f0f0; color: #999; padding: 2px 10px; font-size: 11px;">0</span>
+                        </div>
+                        <div style="padding: 12px; color: #999; font-size: 12px; text-align: center; background: #fafafa; border-radius: 4px;">
+                            暂无更新
+                        </div>
+                    </div>
+                """
 
         html += "</div></div>"
 
         # 页脚 - McKinsey 风格
-        source_count = len(grouped_by_source)
         html += f"""
                 <div class="footer">
                     <div class="footer-text">
-                        {source_count} Sources · {len(items)} Articles · AI Daily Briefing
+                        {active_sources}/{total_sources} Sources · {len(items)} Articles · AI Daily Briefing
                     </div>
                 </div>
             </div>
