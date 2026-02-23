@@ -1149,6 +1149,106 @@ class Crawler:
 
         return articles
 
+    def fetch_web_deeplearning_batch(self, max_items=5, max_days=2):
+        """爬取 The Batch (Andrew Ng's DeepLearning.AI Newsletter)"""
+        source_name = "The Batch (Andrew Ng)"
+        print(f"正在抓取 {source_name} (网页) ...")
+
+        try:
+            resp = requests.get('https://www.deeplearning.ai/the-batch/',
+                              headers=self.headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            # 日期过滤
+            cutoff_date = datetime.now() - timedelta(days=max_days)
+            expired_count = 0
+
+            # 查找文章链接 (格式: /the-batch/xxx/)
+            articles = soup.find_all('a', href=True)
+            news_links = []
+            seen_hrefs = set()
+            for a in articles:
+                href = a.get('href', '')
+                # 匹配 /the-batch/xxx/ 格式，排除根目录
+                if href.startswith('/the-batch/') and href != '/the-batch/' and href not in seen_hrefs:
+                    # 排除分页链接
+                    if '/page/' not in href and '?' not in href:
+                        seen_hrefs.add(href)
+                        news_links.append(href)
+
+            new_items = []
+            for href in news_links[:max_items * 2]:
+                full_url = f"https://www.deeplearning.ai{href}"
+                item_id = self._generate_id(full_url)
+
+                if self.storage.is_sent(item_id):
+                    continue
+
+                try:
+                    detail_resp = requests.get(full_url, headers=self.headers, timeout=10)
+                    detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
+
+                    # 获取标题
+                    og_title = detail_soup.find('meta', {'property': 'og:title'})
+                    title = og_title.get('content', '') if og_title else ''
+                    if not title:
+                        h1 = detail_soup.find('h1')
+                        title = h1.get_text(strip=True) if h1 else ''
+                    if not title:
+                        title = href.split('/')[-2].replace('-', ' ').title()
+
+                    # 获取摘要
+                    og_desc = detail_soup.find('meta', {'property': 'og:description'})
+                    summary = og_desc.get('content', '') if og_desc else ''
+                    if not summary:
+                        meta_desc = detail_soup.find('meta', {'name': 'description'})
+                        summary = meta_desc.get('content', '') if meta_desc else ''
+
+                    # 获取发布日期
+                    published = ''
+                    time_tag = detail_soup.find('time')
+                    if time_tag:
+                        published = time_tag.get('datetime', '')
+                    if not published:
+                        pub_meta = detail_soup.find('meta', {'property': 'article:published_time'})
+                        published = pub_meta.get('content', '') if pub_meta else ''
+
+                    # 日期过滤
+                    if published:
+                        try:
+                            pub_date = dateutil_parse(published)
+                            if pub_date.replace(tzinfo=None) < cutoff_date:
+                                expired_count += 1
+                                continue
+                            published = pub_date.strftime('%Y-%m-%d')
+                        except:
+                            pass
+
+                    if title:
+                        new_items.append({
+                            'id': item_id,
+                            'title': title,
+                            'link': full_url,
+                            'source': source_name,
+                            'category': '技术深度',
+                            'published': published,
+                            'summary': summary or title
+                        })
+
+                        if len(new_items) >= max_items:
+                            break
+
+                except Exception as e:
+                    continue
+
+            expired_str = f" (过期 {expired_count})" if expired_count else ""
+            print(f"  找到 {len(new_items)} 条新内容{expired_str}")
+            return new_items
+
+        except Exception as e:
+            print(f"  爬取失败: {e}")
+            return []
+
     def fetch_all(self, sources, max_items=5, max_days=2):
         """抓取所有新闻源"""
         all_items = []
@@ -1193,6 +1293,8 @@ class Crawler:
                     items = self.fetch_web_producthunt(max_items, max_days)
                 elif web_func == 'hn_blogs':
                     items = self.fetch_web_hn_blogs(max_items, max_days)
+                elif web_func == 'deeplearning_batch':
+                    items = self.fetch_web_deeplearning_batch(max_items, max_days)
                 else:
                     print(f"  未知的爬虫函数: {web_func}")
                     items = []
