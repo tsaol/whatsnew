@@ -810,72 +810,7 @@ class Mailer:
                 </div>
         """
 
-        # 本周新星区域 - 展示 GitHub Trending 和 Product Hunt
-        github_items = [item for item in items if item.get('source') == 'GitHub Trending'][:3]
-        ph_items = [item for item in items if item.get('source') == 'Product Hunt'][:3]
-
-        if github_items or ph_items:
-            html += """
-                <div id="discoveries" style="padding: 24px 32px; background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border-bottom: 1px solid #f9a8d4;">
-                    <div class="section-header">
-                        <span class="section-badge" style="background: linear-gradient(135deg, #db2777 0%, #be185d 100%);">🔥 本周新星</span>
-                        <span class="section-title">开源项目 & 新产品发现</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
-            """
-
-            # GitHub Trending 列
-            if github_items:
-                html += """
-                        <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #f9a8d4;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <span style="font-size: 18px;">⭐</span>
-                                <span style="font-weight: 700; color: #831843;">开源热门</span>
-                            </div>
-                """
-                for item in github_items:
-                    title = item.get('title', '')[:50]
-                    link = item.get('link', '#')
-                    summary = item.get('summary', '')[:60]
-                    html += f"""
-                            <div style="padding: 10px 0; border-bottom: 1px solid #fce7f3;">
-                                <a href="{link}" target="_blank" style="color: #be185d; text-decoration: none; font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">{title}</a>
-                                <div style="font-size: 11px; color: #9d174d;">{summary}</div>
-                            </div>
-                    """
-                html += """
-                        </div>
-                """
-
-            # Product Hunt 列
-            if ph_items:
-                html += """
-                        <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #f9a8d4;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <span style="font-size: 18px;">🚀</span>
-                                <span style="font-weight: 700; color: #831843;">产品发现</span>
-                            </div>
-                """
-                for item in ph_items:
-                    title = item.get('title', '')[:50]
-                    link = item.get('link', '#')
-                    summary = item.get('summary', '')[:60]
-                    html += f"""
-                            <div style="padding: 10px 0; border-bottom: 1px solid #fce7f3;">
-                                <a href="{link}" target="_blank" style="color: #be185d; text-decoration: none; font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">{title}</a>
-                                <div style="font-size: 11px; color: #9d174d;">{summary}</div>
-                            </div>
-                    """
-                html += """
-                        </div>
-                """
-
-            html += """
-                    </div>
-                </div>
-            """
-
-        # 开篇评论区域（在 AI 分析前显示）
+        # 开篇评论区域（最先显示）
         if ai_analysis and ai_analysis.get('commentary'):
             html += f"""
                 <div id="commentary" class="commentary-section">
@@ -1000,17 +935,89 @@ class Mailer:
                 """
             html += "</div>"
 
-        # 完整新闻 - 按具体来源分组（多栏布局）
+        # 提取 GitHub Trending 和 Product Hunt 用于独立展示
+        github_items = [item for item in items if item.get('source') == 'GitHub Trending']
+        ph_items = [item for item in items if item.get('source') == 'Product Hunt']
+
+        # 开源热门区域 - GitHub Trending 完整展示
+        if github_items:
+            html += """
+                <div id="github" style="padding: 28px 32px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-bottom: 1px solid #fbbf24;">
+                    <div class="section-header">
+                        <span class="section-badge" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">⭐ 开源热门</span>
+                        <span class="section-title">GitHub Trending</span>
+                    </div>
+                    <div style="display: grid; gap: 12px; margin-top: 16px;">
+            """
+            for item in github_items:
+                title = item.get('title', '')
+                link = item.get('link', '#')
+                summary = item.get('summary', '')
+                pub_date = format_date(item.get('published', ''))
+                is_agent = item.get('is_agent_related', False)
+                agent_html = '<span style="background: #6366f1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-right: 6px;">Agent</span>' if is_agent else ''
+
+                html += f"""
+                        <div style="background: #ffffff; border-radius: 12px; padding: 16px; border: 1px solid #fde68a; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div style="margin-bottom: 8px;">
+                                {agent_html}
+                                <a href="{link}" target="_blank" style="color: #92400e; text-decoration: none; font-weight: 700; font-size: 14px;">{title}</a>
+                            </div>
+                            <div style="font-size: 13px; color: #78350f; line-height: 1.5; margin-bottom: 8px;">{summary}</div>
+                            <div style="font-size: 11px; color: #a16207;">{pub_date}</div>
+                        </div>
+                """
+            html += """
+                    </div>
+                </div>
+            """
+
+        # 产品发现区域 - Product Hunt 完整展示
+        if ph_items:
+            html += """
+                <div id="producthunt" style="padding: 28px 32px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-bottom: 1px solid #f87171;">
+                    <div class="section-header">
+                        <span class="section-badge" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">🚀 产品发现</span>
+                        <span class="section-title">Product Hunt</span>
+                    </div>
+                    <div style="display: grid; gap: 12px; margin-top: 16px;">
+            """
+            for item in ph_items:
+                title = item.get('title', '')
+                link = item.get('link', '#')
+                summary = item.get('summary', '')
+                pub_date = format_date(item.get('published', ''))
+                is_agent = item.get('is_agent_related', False)
+                agent_html = '<span style="background: #6366f1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-right: 6px;">Agent</span>' if is_agent else ''
+
+                html += f"""
+                        <div style="background: #ffffff; border-radius: 12px; padding: 16px; border: 1px solid #fecaca; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div style="margin-bottom: 8px;">
+                                {agent_html}
+                                <a href="{link}" target="_blank" style="color: #991b1b; text-decoration: none; font-weight: 700; font-size: 14px;">{title}</a>
+                            </div>
+                            <div style="font-size: 13px; color: #7f1d1d; line-height: 1.5; margin-bottom: 8px;">{summary}</div>
+                            <div style="font-size: 11px; color: #b91c1c;">{pub_date}</div>
+                        </div>
+                """
+            html += """
+                    </div>
+                </div>
+            """
+
+        # 完整新闻 - 按具体来源分组（排除 GitHub Trending 和 Product Hunt）
         html += """
             <div id="newslist" class="news-section">
                 <h2 class="news-section-title">完整新闻列表</h2>
         """
 
-        # 按具体来源分组
+        # 按具体来源分组（排除已单独展示的）
+        excluded_sources = {'GitHub Trending', 'Product Hunt'}
         grouped_by_source = defaultdict(list)
         for item in items:
             source = item.get('source', '未知来源')
-            grouped_by_source[source].append(item)
+            if source not in excluded_sources:
+                grouped_by_source[source].append(item)
 
         # 获取 TOP 新闻的 ID
         top_ids = set()
