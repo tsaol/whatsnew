@@ -466,17 +466,24 @@ async def api_list_articles(
     category: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    sort: str = Query("published_at:desc")
+    sort: str = Query("published_at:desc"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = Query(None)
 ):
     """文章列表 API"""
-    api_auth(request)
+    api_auth(request, x_api_key, api_key)
     return query_articles(page, size, source, category, date_from, date_to, sort)
 
 
 @app.get("/api/articles/{doc_id}")
-async def api_get_article(request: Request, doc_id: str):
+async def api_get_article(
+    request: Request,
+    doc_id: str,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = Query(None)
+):
     """获取单篇文章 API"""
-    api_auth(request)
+    api_auth(request, x_api_key, api_key)
     article = get_article_by_id(doc_id)
     if not article:
         raise HTTPException(status_code=404, detail="文章不存在")
@@ -491,24 +498,34 @@ async def api_search(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     source: Optional[str] = None,
-    category: Optional[str] = None
+    category: Optional[str] = None,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = Query(None)
 ):
     """搜索 API"""
-    api_auth(request)
+    api_auth(request, x_api_key, api_key)
     return execute_search(q, mode, page, size, source, category)
 
 
 @app.get("/api/stats")
-async def api_stats(request: Request):
+async def api_stats(
+    request: Request,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = Query(None)
+):
     """统计信息 API"""
-    api_auth(request)
+    api_auth(request, x_api_key, api_key)
     return storage.get_stats()
 
 
 @app.get("/api/filters")
-async def api_filters(request: Request):
+async def api_filters(
+    request: Request,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = Query(None)
+):
     """获取过滤选项 API"""
-    api_auth(request)
+    api_auth(request, x_api_key, api_key)
     return {
         "sources": search.list_sources(),
         "categories": search.list_categories()
