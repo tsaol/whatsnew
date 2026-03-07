@@ -20,7 +20,7 @@ class WeeklyAnalyzer:
         from langchain_aws import ChatBedrock
 
         self.llm = ChatBedrock(
-            model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model_id="us.anthropic.claude-opus-4-5-20251101-v1:0",
             region_name=aws_region,
             model_kwargs={
                 "temperature": 0.5,
