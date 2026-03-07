@@ -515,9 +515,21 @@ def main():
     by_category = Counter(item.get('category', '未分类') for item in week_news)
 
     # 日期范围
-    dates = [item.get('sent_at') for item in week_news if item.get('sent_at')]
+    dates = []
+    for item in week_news:
+        sent_at = item.get('sent_at')
+        if sent_at:
+            if isinstance(sent_at, str):
+                try:
+                    sent_at = datetime.fromisoformat(sent_at.replace('Z', '+00:00'))
+                except:
+                    continue
+            dates.append(sent_at)
+
     if dates:
-        date_range = f"{min(dates).strftime('%Y-%m-%d')} ~ {max(dates).strftime('%Y-%m-%d')}"
+        min_date = min(dates)
+        max_date = max(dates)
+        date_range = f"{min_date.strftime('%Y-%m-%d')} ~ {max_date.strftime('%Y-%m-%d')}"
     else:
         date_range = "N/A"
 
