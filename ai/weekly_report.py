@@ -60,9 +60,26 @@ class WeeklyAnalyzer:
     def __init__(self, aws_region='us-west-2'):
         from langchain_aws import ChatBedrock
 
+        # 创建带超时配置的 Bedrock 客户端
+        import boto3
+        from botocore.config import Config as BotoConfig
+
+        bedrock_config = BotoConfig(
+            read_timeout=300,  # 5 分钟超时
+            connect_timeout=60,
+            retries={'max_attempts': 2}
+        )
+
+        bedrock_client = boto3.client(
+            'bedrock-runtime',
+            region_name=aws_region,
+            config=bedrock_config
+        )
+
         self.llm = ChatBedrock(
             model_id="us.anthropic.claude-opus-4-6-v1",
             region_name=aws_region,
+            client=bedrock_client,
             model_kwargs={
                 "temperature": 0.5,
                 "max_tokens": 8192
