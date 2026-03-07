@@ -37,9 +37,9 @@ class NewsAnalyzerAgent:
         """初始化"""
         self.aws_region = aws_region
 
-        # 初始化 Claude Sonnet 4.5
+        # 初始化 Claude Opus 4.5
         self.llm = ChatBedrock(
-            model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model_id="global.anthropic.claude-opus-4-5-20251101-v1:0",
             region_name=aws_region,
             model_kwargs={
                 "temperature": 0.3,
