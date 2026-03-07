@@ -2,6 +2,8 @@
 每周六北京时间 12:00 发送
 """
 import sys
+import json
+import boto3
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from collections import Counter, defaultdict
@@ -11,6 +13,45 @@ from src.storage import Storage
 
 # 北京时区
 BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+def get_week_news_from_s3(days=7, bucket='cls-whatsnew', prefix='ai'):
+    """从 S3 日报归档获取一周新闻（包含完整元数据）
+
+    Args:
+        days: 回溯天数
+        bucket: S3 bucket 名称
+        prefix: S3 前缀 (ai 或 ecom)
+
+    Returns:
+        list: 新闻列表，每条包含 title, source, category, link, summary 等
+    """
+    s3 = boto3.client('s3')
+    all_items = []
+    now = datetime.now(BEIJING_TZ)
+
+    for i in range(days):
+        date = (now - timedelta(days=i)).strftime('%Y-%m-%d')
+        key = f'{prefix}/{date}.json'
+
+        try:
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            data = json.loads(obj['Body'].read().decode('utf-8'))
+            items = data.get('items', [])
+
+            # 添加日期信息
+            for item in items:
+                item['report_date'] = date
+
+            all_items.extend(items)
+            print(f"[S3] 加载 {date}: {len(items)} 条")
+
+        except s3.exceptions.NoSuchKey:
+            print(f"[S3] {date} 无数据")
+        except Exception as e:
+            print(f"[S3] 加载 {date} 失败: {e}")
+
+    return all_items
 
 
 class WeeklyAnalyzer:
@@ -496,15 +537,19 @@ def main():
     # 加载配置
     config = Config()
 
-    # 加载存储
+    # 加载存储 (用于保存周报摘要)
     data_file = config.get('data_file', 'data/sent_news.json')
     storage = Storage(data_file)
 
-    # 获取过去一周的新闻
+    # 从 S3 获取过去一周的新闻 (包含完整元数据)
     lookback_days = config.get('weekly.lookback_days', 7)
-    week_news = storage.get_week_news(days=lookback_days)
+    s3_bucket = config.get('s3.bucket', 'cls-whatsnew')
+    s3_prefix = config.get('s3.prefix', 'ai')
 
-    print(f"\n[Weekly] 获取过去 {lookback_days} 天的新闻: {len(week_news)} 条")
+    print(f"\n[Weekly] 从 S3 加载过去 {lookback_days} 天的日报...")
+    week_news = get_week_news_from_s3(days=lookback_days, bucket=s3_bucket, prefix=s3_prefix)
+
+    print(f"[Weekly] 共获取 {len(week_news)} 条新闻")
 
     if not week_news:
         print("[Weekly] 本周没有新闻数据，跳过周报生成")
@@ -514,22 +559,27 @@ def main():
     by_source = Counter(item.get('source', '未知') for item in week_news)
     by_category = Counter(item.get('category', '未分类') for item in week_news)
 
-    # 日期范围
-    dates = []
+    # 日期范围 (从 report_date 或 published 字段获取)
+    dates = set()
     for item in week_news:
-        sent_at = item.get('sent_at')
-        if sent_at:
-            if isinstance(sent_at, str):
+        # 优先使用 report_date (日报日期)
+        report_date = item.get('report_date')
+        if report_date:
+            dates.add(report_date)
+        else:
+            # 备用: 从 published 字段解析
+            published = item.get('published')
+            if published:
                 try:
-                    sent_at = datetime.fromisoformat(sent_at.replace('Z', '+00:00'))
+                    if isinstance(published, str):
+                        dt = datetime.fromisoformat(published.replace('Z', '+00:00'))
+                        dates.add(dt.strftime('%Y-%m-%d'))
                 except:
-                    continue
-            dates.append(sent_at)
+                    pass
 
     if dates:
-        min_date = min(dates)
-        max_date = max(dates)
-        date_range = f"{min_date.strftime('%Y-%m-%d')} ~ {max_date.strftime('%Y-%m-%d')}"
+        sorted_dates = sorted(dates)
+        date_range = f"{sorted_dates[0]} ~ {sorted_dates[-1]}"
     else:
         date_range = "N/A"
 
