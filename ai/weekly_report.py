@@ -182,19 +182,33 @@ class WeeklyAnalyzer:
             response = self.llm.invoke(prompt)
             content = response.content
 
-            # 提取 JSON
             import json
             import re
 
-            # 尝试找到 JSON 块
+            def try_parse_json(text):
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    pass
+                repaired = re.sub(r',\s*([}\]])', r'\1', text)
+                try:
+                    return json.loads(repaired)
+                except json.JSONDecodeError:
+                    pass
+                balanced = repaired.rstrip()
+                balanced = re.sub(r',\s*$', '', balanced)
+                open_braces = balanced.count('{') - balanced.count('}')
+                open_brackets = balanced.count('[') - balanced.count(']')
+                balanced += ']' * open_brackets + '}' * open_braces
+                return json.loads(balanced)
+
             json_match = re.search(r'```json\s*([\s\S]*?)\s*```', content)
             if json_match:
                 json_str = json_match.group(1)
             else:
-                # 尝试直接解析
                 json_str = content
 
-            analysis = json.loads(json_str)
+            analysis = try_parse_json(json_str)
             return analysis
 
         except Exception as e:

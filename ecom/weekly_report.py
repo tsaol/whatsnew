@@ -166,31 +166,61 @@ class WeeklyAnalyzer:
 }}
 ```"""
 
-        try:
-            response = self.llm.invoke(prompt)
-            content = response.content
+        import re
 
-            import re
-            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', content)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                json_str = content
+        def try_parse_json(text):
+            """Try to parse JSON with repair attempts"""
+            # Try direct parse
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                pass
+            # Remove trailing commas before } or ]
+            repaired = re.sub(r',\s*([}\]])', r'\1', text)
+            try:
+                return json.loads(repaired)
+            except json.JSONDecodeError:
+                pass
+            # Try to fix truncated JSON by closing open brackets
+            balanced = repaired
+            open_braces = balanced.count('{') - balanced.count('}')
+            open_brackets = balanced.count('[') - balanced.count(']')
+            # Trim to last complete value
+            balanced = re.sub(r',\s*$', '', balanced.rstrip())
+            balanced += ']' * open_brackets + '}' * open_braces
+            try:
+                return json.loads(balanced)
+            except json.JSONDecodeError as e:
+                raise e
 
-            analysis = json.loads(json_str)
-            return analysis
+        for attempt in range(2):
+            try:
+                response = self.llm.invoke(prompt)
+                content = response.content
 
-        except Exception as e:
-            print(f"[Weekly] AI 分析失败: {e}")
-            return {
-                "executive_summary": "本周电商+AI 领域持续活跃，多个重要动态值得关注。",
-                "trends": [],
-                "top_news": [],
-                "tech_applications": [],
-                "platform_moves": [],
-                "watchlist": [],
-                "outlook": "期待下周更多精彩内容。"
-            }
+                json_match = re.search(r'```json\s*([\s\S]*?)\s*```', content)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    json_str = content
+
+                analysis = try_parse_json(json_str)
+                return analysis
+
+            except Exception as e:
+                print(f"[Weekly] AI 分析尝试 {attempt+1} 失败: {e}")
+                if attempt == 0:
+                    print("[Weekly] 重试中...")
+                    continue
+                return {
+                    "executive_summary": "本周电商+AI 领域持续活跃，多个重要动态值得关注。",
+                    "trends": [],
+                    "top_news": [],
+                    "tech_applications": [],
+                    "platform_moves": [],
+                    "watchlist": [],
+                    "outlook": "期待下周更多精彩内容。"
+                }
 
 
 def format_weekly_email(news_items: list, analysis: dict, stats: dict) -> str:
