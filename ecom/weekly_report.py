@@ -594,15 +594,6 @@ def main():
     print("\n[Weekly] 保存到 S3...")
     s3_saved = save_weekly_to_s3(html_content, analysis, stats, config)
 
-    storage.save_weekly_summary({
-        'week_start': (datetime.now(BEIJING_TZ) - timedelta(days=7)).isoformat(),
-        'week_end': datetime.now(BEIJING_TZ).isoformat(),
-        'total_news': stats['total'],
-        'source_count': stats['source_count'],
-        'executive_summary': analysis.get('executive_summary', ''),
-        'top_trends': [t.get('name') for t in analysis.get('trends', [])[:3]]
-    })
-
     print("\n" + "=" * 60)
     print("电商+AI 周报生成完成")
     print(f"  - 新闻数量: {stats['total']}")
