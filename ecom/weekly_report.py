@@ -174,19 +174,56 @@ class WeeklyAnalyzer:
             try:
                 return json.loads(text)
             except json.JSONDecodeError as e:
-                print(f"[Weekly] JSON raw parse error at pos {e.pos}: {repr(text[max(0,e.pos-20):e.pos+20])}")
-            # Remove trailing commas before } or ]
-            repaired = re.sub(r',\s*([}\]])', r'\1', text)
+                print(f"[Weekly] JSON parse error at pos {e.pos}: {repr(text[max(0,e.pos-20):e.pos+20])}")
+
+            # Fix unescaped quotes inside JSON string values
+            # Match content between key-value quotes and escape inner quotes
+            def fix_inner_quotes(t):
+                result = []
+                i = 0
+                in_string = False
+                escaped = False
+                while i < len(t):
+                    ch = t[i]
+                    if escaped:
+                        result.append(ch)
+                        escaped = False
+                    elif ch == '\\':
+                        result.append(ch)
+                        escaped = True
+                    elif ch == '"':
+                        if not in_string:
+                            in_string = True
+                            result.append(ch)
+                        else:
+                            # Check if this quote ends the string value
+                            rest = t[i+1:].lstrip()
+                            if rest and rest[0] in ':,}]\n':
+                                in_string = False
+                                result.append(ch)
+                            elif rest == '':
+                                in_string = False
+                                result.append(ch)
+                            else:
+                                # Inner quote - escape it
+                                result.append('\\"')
+                    else:
+                        result.append(ch)
+                    i += 1
+                return ''.join(result)
+
+            repaired = fix_inner_quotes(text)
+            # Also remove trailing commas
+            repaired = re.sub(r',\s*([}\]])', r'\1', repaired)
             try:
                 return json.loads(repaired)
             except json.JSONDecodeError:
                 pass
             # Try to fix truncated JSON by closing open brackets
-            balanced = repaired
+            balanced = repaired.rstrip()
+            balanced = re.sub(r',\s*$', '', balanced)
             open_braces = balanced.count('{') - balanced.count('}')
             open_brackets = balanced.count('[') - balanced.count(']')
-            # Trim to last complete value
-            balanced = re.sub(r',\s*$', '', balanced.rstrip())
             balanced += ']' * open_brackets + '}' * open_braces
             try:
                 return json.loads(balanced)

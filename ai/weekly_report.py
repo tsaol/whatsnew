@@ -190,7 +190,40 @@ class WeeklyAnalyzer:
                     return json.loads(text)
                 except json.JSONDecodeError:
                     pass
-                repaired = re.sub(r',\s*([}\]])', r'\1', text)
+                # Fix unescaped quotes inside JSON string values
+                def fix_inner_quotes(t):
+                    result = []
+                    i = 0
+                    in_string = False
+                    escaped = False
+                    while i < len(t):
+                        ch = t[i]
+                        if escaped:
+                            result.append(ch)
+                            escaped = False
+                        elif ch == '\\':
+                            result.append(ch)
+                            escaped = True
+                        elif ch == '"':
+                            if not in_string:
+                                in_string = True
+                                result.append(ch)
+                            else:
+                                rest = t[i+1:].lstrip()
+                                if rest and rest[0] in ':,}]\n':
+                                    in_string = False
+                                    result.append(ch)
+                                elif rest == '':
+                                    in_string = False
+                                    result.append(ch)
+                                else:
+                                    result.append('\\"')
+                        else:
+                            result.append(ch)
+                        i += 1
+                    return ''.join(result)
+                repaired = fix_inner_quotes(text)
+                repaired = re.sub(r',\s*([}\]])', r'\1', repaired)
                 try:
                     return json.loads(repaired)
                 except json.JSONDecodeError:
