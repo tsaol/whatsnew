@@ -271,6 +271,21 @@ def format_weekly_email(news_items: list, analysis: dict, stats: dict) -> str:
     ACCENT = "#e94560"    # Commerce red
     SECONDARY = "#0f3460" # Blue accent
 
+    # Build title -> link mapping for clickable news
+    title_link_map = {}
+    for item in news_items:
+        link = item.get('link', '')
+        if link:
+            title_link_map[item.get('title', '')] = link
+            title_link_map[item.get('title_zh', '')] = link
+
+    def make_link(title, link=''):
+        if not link:
+            link = title_link_map.get(title, '')
+        if link:
+            return f'<a href="{link}" style="color: #1e293b; text-decoration: none; border-bottom: 1px solid #cbd5e1;" target="_blank">{title}</a>'
+        return title
+
     # 趋势 HTML
     trends_html = ""
     for i, trend in enumerate(analysis.get('trends', [])[:5], 1):
@@ -291,6 +306,7 @@ def format_weekly_email(news_items: list, analysis: dict, stats: dict) -> str:
     # TOP 10 HTML
     top_news_html = ""
     for item in analysis.get('top_news', [])[:10]:
+        title = item.get('title', '')
         top_news_html += f"""
         <tr>
             <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0;">
@@ -298,7 +314,7 @@ def format_weekly_email(news_items: list, analysis: dict, stats: dict) -> str:
             </td>
             <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0;">
                 <div style="color: #64748b; font-size: 12px;">{item.get('source', '')}</div>
-                <div style="color: #1e293b; font-size: 14px; margin-top: 4px;">{item.get('title', '')}</div>
+                <div style="color: #1e293b; font-size: 14px; margin-top: 4px;">{make_link(title)}</div>
                 <div style="color: #64748b; font-size: 13px; margin-top: 4px;">{item.get('reason', '')}</div>
             </td>
         </tr>
@@ -470,6 +486,21 @@ def format_weekly_email(news_items: list, analysis: dict, stats: dict) -> str:
             <div style="padding: 16px; background: #f8fafc; border-radius: 8px;">
                 {source_stats_html}
             </div>
+        </div>
+
+        <!-- Full News List -->
+        <div style="padding: 0 32px 32px;">
+            <div style="font-size: 20px; font-weight: bold; color: {PRIMARY}; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 3px solid {ACCENT};">
+                ALL NEWS | 本周全部新闻 ({stats['total']})
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                {''.join(f"""<tr>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #64748b; white-space: nowrap; width: 100px;">{item.get('source', '')}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+                        {'<a href="' + item.get('link', '') + '" style="color: #334155; text-decoration: none; border-bottom: 1px solid #e2e8f0;" target="_blank">' + (item.get('title_zh') or item.get('title', '')) + '</a>' if item.get('link') else (item.get('title_zh') or item.get('title', ''))}
+                    </td>
+                </tr>""" for item in sorted(news_items, key=lambda x: x.get('report_date', ''), reverse=True))}
+            </table>
         </div>
 
         <!-- Footer -->
