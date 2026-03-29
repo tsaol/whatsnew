@@ -173,8 +173,8 @@ class WeeklyAnalyzer:
             # Try direct parse
             try:
                 return json.loads(text)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"[Weekly] JSON raw parse error at pos {e.pos}: {repr(text[max(0,e.pos-20):e.pos+20])}")
             # Remove trailing commas before } or ]
             repaired = re.sub(r',\s*([}\]])', r'\1', text)
             try:
