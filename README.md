@@ -12,6 +12,9 @@ AI-focused news aggregator with intelligent analysis powered by AWS Bedrock Clau
 - **Content Hub**: Full-text storage with semantic search (OpenSearch + Cohere Embedding)
 - **Browser Capture**: Playwright-based full page capture with screenshots and image download
 - **S3 Archiving**: Daily reports archived to S3 (HTML + JSON)
+- **Weekly Reports**: AI and Ecommerce weekly intelligence reports with clickable links
+  - AI Weekly: Saturday 12:00 PM Beijing time
+  - Ecom Weekly: Saturday 9:00 AM Beijing time
 
 ## Quick Start
 

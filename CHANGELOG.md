@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Ecom Weekly Report** (#54, #55): Weekly ecommerce+AI intelligence report
+  - S3 data loading from `ecom/` prefix, archiving to `weekly-ecom/`
+  - AI analysis via Bedrock Opus 4.6 with ecommerce+AI analyst prompt
+  - Commerce-themed HTML email (Deep Navy #1a1a2e + Commerce Red #e94560)
+  - Clickable news links in TOP 10 and full news list sections
+  - Crontab: every Saturday 9:00 AM Beijing time
+- **Clickable News Links in Weekly Reports**: Both AI and ecom weekly reports now include clickable links
+  - TOP 10 news titles link to original articles
+  - Full news list with all items linked at bottom of email
+
+### Fixed
+- **LLM JSON Repair**: Fix unescaped quotes in LLM JSON output (e.g. `"Agentic Commerce"` inside values)
+  - State machine parser to detect and escape inner quotes
+  - Trailing comma removal and truncated JSON bracket balancing
+  - Retry mechanism on parse failure
+- **Weekly Report Bugs**: Remove non-existent `Storage.save_weekly_summary` call, fix Python 3.10 f-string syntax
+
+### Previously Added
 - **Content Hub Web Console** (#42): FastAPI web interface at hub.xcaoliu.com
   - Article browsing with pagination and filtering by source/category
   - Multi-mode search: semantic, full-text, hybrid
