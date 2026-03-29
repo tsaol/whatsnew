@@ -1,15 +1,12 @@
 """电商+AI 周报生成脚本
 每周六北京时间 9:00 发送
 """
-import sys
 import json
 import boto3
-from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from collections import Counter, defaultdict
 
 from src.config import Config
-from src.storage import Storage
 
 # 北京时区
 BEIJING_TZ = timezone(timedelta(hours=8))
@@ -635,9 +632,6 @@ def main():
     print("=" * 60)
 
     config = Config()
-
-    data_file = config.get('data_file', 'data/sent_news.json')
-    storage = Storage(data_file)
 
     lookback_days = config.get('weekly.lookback_days', 7)
     s3_bucket = config.get('s3.bucket', 'cls-whatsnew')
