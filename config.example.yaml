@@ -176,7 +176,7 @@ schedule:
 ai:
   enabled: true                                    # 是否启用 AI 分析
   aws_region: us-west-2                           # AWS 区域
-  model_id: us.anthropic.claude-sonnet-4-5-v2:0  # Claude 4.5 模型
+  model_id: global.anthropic.claude-sonnet-4-6  # Claude 4.6 模型
   min_news_for_analysis: 5                        # 最少多少条新闻才触发分析
 
 # 其他配置

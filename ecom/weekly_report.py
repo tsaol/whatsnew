@@ -62,7 +62,7 @@ class WeeklyAnalyzer:
         )
 
         self.llm = ChatBedrock(
-            model_id="us.anthropic.claude-opus-4-6-v1",
+            model_id="global.anthropic.claude-opus-4-6-v1",
             region_name=aws_region,
             client=bedrock_client,
             model_kwargs={

@@ -28,7 +28,7 @@ class NewsAnalyzerAgent:
 
         # 初始化 Claude Sonnet 4.5
         self.llm = ChatBedrock(
-            model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model_id="global.anthropic.claude-sonnet-4-6",
             region_name=aws_region,
             model_kwargs={
                 "temperature": 0.3,
