@@ -314,11 +314,13 @@ class ContentStorage:
             print(f"[Storage] 生成 embedding 失败: {e}")
             return None
 
-    def save_to_s3(self, article: dict) -> bool:
+    def save_to_s3(self, article: dict, archive_date: str = None) -> bool:
         """保存文章到 S3 备份
 
         Args:
             article: 文章数据
+            archive_date: 归档日期 YYYY-MM-DD，默认今天。
+                回填历史日期时必须显式传入，否则旧文章会被归到今天。
 
         Returns:
             bool: 是否成功
@@ -334,7 +336,7 @@ class ContentStorage:
 
             # 生成可读的文件夹名: {date}_{title}_{short_id}
             beijing_tz = timezone(timedelta(hours=8))
-            date_str = datetime.now(beijing_tz).strftime('%Y-%m-%d')
+            date_str = archive_date or datetime.now(beijing_tz).strftime('%Y-%m-%d')
             title = article.get('title', 'untitled')
             if title:
                 slug = re.sub(r'[^\w\s-]', '', title)
