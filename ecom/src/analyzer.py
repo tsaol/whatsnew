@@ -699,9 +699,10 @@ reason 字段必填，说明评分理由（15-30字）。
         trends = state.get("trends", [])
         categorized = state.get("categorized", {})
 
-        # 选出 TOP 5 新闻
+        # 选出 TOP 5 新闻 + 跨源去重（同一事件不同源只保留 score 更高的那条）
+        from src.deduper import dedupe_top_news
         sorted_news = sorted(scored, key=lambda x: x.get('ai_score', 0), reverse=True)
-        top_news = sorted_news[:5]
+        top_news = dedupe_top_news(sorted_news)[:5]
 
         # 准备上下文
         context = f"""

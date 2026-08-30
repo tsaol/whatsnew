@@ -756,6 +756,18 @@ class Crawler:
         # 过滤企业新闻（对所有来源）
         all_items = self._filter_corporate_news(all_items)
 
+        # 跨源去重：同一事件被多个源报道时合并为一条卡片
+        from src.deduper import dedupe_cross_source
+        all_items = dedupe_cross_source(all_items)
+
+        # 摘要补齐：短摘要的条目用 trafilatura 抓正文首段
+        try:
+            from src.summary_backfill import backfill_summaries
+            backfill_summaries(all_items)
+        except Exception as e:
+            # 补齐失败不影响主流程
+            print(f"  [摘要补齐] 跳过（{e}）")
+
         return all_items
 
     def _dedup_newsletters(self, items):

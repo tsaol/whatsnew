@@ -516,6 +516,37 @@ class Mailer:
                     line-height: 1.6;
                 }}
 
+                /* 跨源去重合并后的其他来源 */
+                .related-sources {{
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px dashed #e5e7eb;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    align-items: center;
+                }}
+                .related-label {{
+                    font-size: 12px;
+                    color: #94a3b8;
+                    margin-right: 4px;
+                }}
+                .related-badge {{
+                    display: inline-block;
+                    padding: 3px 10px;
+                    font-size: 12px;
+                    color: #64748b;
+                    background: #f1f5f9;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 999px;
+                    text-decoration: none;
+                }}
+                .related-badge:hover {{
+                    color: #6366f1;
+                    background: #eef2ff;
+                    border-color: #c7d2fe;
+                }}
+
                 /* 页脚 */
                 .footer {{
                     background: #f8fafc;
@@ -700,10 +731,12 @@ class Mailer:
                 is_top = item.get('id') in top_ids
                 card_class = "news-card is-top" if is_top else "news-card"
 
-                # 构建 meta badges
+                # 构建 meta badges（TOP + 主源 + Spain region 徽章）
                 meta_html = ""
                 if is_top:
                     meta_html += '<span class="meta-badge top">TOP</span>'
+                if item.get('is_spain_region'):
+                    meta_html += '<span class="meta-badge" style="background:#fef2f2;color:#dc2626;">eu-south-2</span>'
                 source = item.get('source', '')
                 if source:
                     meta_html += f'<span class="meta-badge source">{source}</span>'
@@ -711,13 +744,28 @@ class Mailer:
                 # 获取翻译
                 title_zh = item.get('title_zh', '')
                 summary_zh = item.get('summary_zh', '')
-                summary_text = item['summary'][:250]
+                summary_text = (item.get('summary') or '')[:250]
 
                 # 检查摘要和翻译是否相同
                 summary_same = summary_zh and summary_text.replace(' ', '')[:100] == summary_zh.replace(' ', '')[:100]
 
                 # 格式化日期
                 pub_date = format_date(item.get('published', ''))
+
+                # 相关来源（跨源去重后合并进来的其他源）
+                related_html = ""
+                related = item.get('related_sources') or []
+                if related:
+                    badges = "".join(
+                        f'<a href="{r.get("url", "#")}" target="_blank" class="related-badge">{r.get("name", "")}</a>'
+                        for r in related if r.get("name")
+                    )
+                    related_html = f'''
+                        <div class="related-sources">
+                            <span class="related-label">同源报道 · {len(related)} 家：</span>
+                            {badges}
+                        </div>
+                    '''
 
                 html += f"""
                     <div class="{card_class}">
@@ -731,6 +779,7 @@ class Mailer:
                         </div>
                         <div class="news-summary">{summary_text}...</div>
                         {f'<div class="news-translation">{summary_zh[:200]}...</div>' if summary_zh and not summary_same else ''}
+                        {related_html}
                     </div>
                 """
 
