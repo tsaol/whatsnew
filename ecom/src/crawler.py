@@ -83,6 +83,20 @@ class Crawler:
         'valuation', 'funding round', 'series a', 'series b', 'series c',
     ]
 
+    # AWS 西班牙 (eu-south-2, Zaragoza) region 关键词
+    # 命中任一即视为西班牙 region 相关，强制分类到 "AWS 西班牙"
+    SPAIN_REGION_KEYWORDS = [
+        'eu-south-2',
+        'spain region', 'spain aws region', 'aws spain region',
+        'europe (spain)', 'europe(spain)',
+        'zaragoza',
+        'aws españa', 'aws espana',
+        '西班牙 region', 'aws 西班牙', '萨拉戈萨',
+        # 常见"上线/可用"措辞（配合 aws 上下文；这里只作粗匹配，命中率靠源头限制）
+        'now available in the aws europe (spain)',
+        'available in eu-south-2',
+    ]
+
     def __init__(self, storage, keyword_filter=None, key_companies=None):
         self.storage = storage
         self.keyword_filter = keyword_filter  # None = 不过滤, 'agent' = Agent相关, 'ecommerce' = 电商+AI
@@ -110,6 +124,11 @@ class Crawler:
                 if alias in text:
                     return True
         return False
+
+    def _is_spain_region_news(self, title, summary):
+        """检查内容是否与 AWS 西班牙 region (eu-south-2) 相关"""
+        text = f"{title} {summary}".lower()
+        return any(kw.lower() in text for kw in self.SPAIN_REGION_KEYWORDS)
 
     def _clean_html(self, text):
         """清理 HTML 标签和多余空白"""
@@ -187,33 +206,49 @@ class Crawler:
 
         return has_ecom and has_ai
 
-    def _should_include(self, title, summary, source_name):
-        """判断是否应该包含这条新闻，返回 (是否包含, 是否关键企业)"""
+    def _should_include(self, title, summary, source_name, source_tag=None):
+        """判断是否应该包含这条新闻，返回 (是否包含, 是否关键企业, 是否西班牙 region)
+
+        source_tag: 数据源级别的 tag (来自 config.yaml)，如 'aws_spain' 表示该源
+            专门用于抓取西班牙 region 相关内容 —— 对这类源，非西班牙内容会被过滤掉。
+        """
+        # 优先检查是否是 AWS 西班牙 region 新闻（覆盖所有其他分类）
+        is_spain = self._is_spain_region_news(title, summary)
+        if is_spain:
+            return True, False, True  # 包含，非 key_company，标记为 Spain region
+
+        # 对于西班牙专用源，非西班牙内容直接过滤（避免 AWS What's New 全量噪音）
+        if source_tag == 'aws_spain':
+            return False, False, False
+
         # 检查内容是否真的提到关键企业（必须在内容中出现，不能只看来源）
         is_key_company = self._is_key_company_news(title, summary)
         if is_key_company:
-            return True, True  # 包含，且标记为关键企业
+            return True, True, False  # 包含，且标记为关键企业
 
         # 如果没有设置关键词过滤，包含所有
         if not self.keyword_filter:
-            return True, False
+            return True, False, False
 
         # Agent 相关源总是包含（仅限 agent 过滤模式）
         if self.keyword_filter == 'agent':
             agent_sources = ['LangChain', 'LlamaIndex', 'CrewAI', 'Semantic Kernel',
                             'Anthropic', 'Simon Willison', 'Latent Space']
             if any(s.lower() in source_name.lower() for s in agent_sources):
-                return True, False
-            return self._is_agent_related(title, summary), False
+                return True, False, False
+            return self._is_agent_related(title, summary), False, False
 
         # 电商+AI 过滤：所有内容都必须同时包含电商和AI关键词
         if self.keyword_filter == 'ecommerce':
-            return self._is_ecommerce_related(title, summary), False
+            return self._is_ecommerce_related(title, summary), False, False
 
-        return True, False
+        return True, False, False
 
-    def fetch_rss(self, url, source_name, max_items=5, max_days=2):
-        """抓取RSS源"""
+    def fetch_rss(self, url, source_name, max_items=5, max_days=2, source_tag=None):
+        """抓取RSS源
+
+        source_tag: 数据源类型标签（如 'aws_spain'），用于开启源级别过滤策略
+        """
         print(f"正在抓取 {source_name} ...")
 
         try:
@@ -253,7 +288,9 @@ class Crawler:
                 summary = self._extract_summary(entry)
 
                 # 关键词过滤
-                should_include, is_key_company = self._should_include(title, summary, source_name)
+                should_include, is_key_company, is_spain_region = self._should_include(
+                    title, summary, source_name, source_tag=source_tag
+                )
                 if not should_include:
                     keyword_filtered += 1
                     continue
@@ -276,7 +313,8 @@ class Crawler:
                     'summary': summary,
                     'published': pub_date,
                     'source': source_name,
-                    'is_key_company': is_key_company  # 标记是否为关键企业新闻
+                    'is_key_company': is_key_company,  # 标记是否为关键企业新闻
+                    'is_spain_region': is_spain_region,  # 标记是否为 AWS 西班牙 region 新闻
                 }
 
                 new_items.append(item)
@@ -576,7 +614,8 @@ class Crawler:
                             'summary': title,  # 使用标题作为摘要
                             'published': datetime.now().strftime('%Y-%m-%d'),
                             'source': source_name,
-                            'is_key_company': True  # 标记为关键企业
+                            'is_key_company': True,  # 标记为关键企业
+                            'is_spain_region': False,
                         }
                         new_items.append(item)
 
@@ -651,7 +690,8 @@ class Crawler:
                     'summary': title,
                     'published': datetime.now().strftime('%Y-%m-%d'),
                     'source': source_name,
-                    'is_key_company': True  # 标记为关键企业
+                    'is_key_company': True,  # 标记为关键企业
+                    'is_spain_region': False,
                 }
                 new_items.append(item)
 
@@ -677,11 +717,17 @@ class Crawler:
             source_name = source.get('name', '')
 
             if source_type == 'rss':
+                # AWS What's New 源包含所有 AWS 产品更新（每天几十条），
+                # 只在 aws_spain tag 场景下我们才愿意抓这么多——这时 max_items 放大到 100
+                # 以确保西班牙相关条目不会因为出现在列表靠后而被漏掉。
+                source_tag = source.get('tag')
+                effective_max = 100 if source_tag == 'aws_spain' and 'whats-new' in source['url'] else max_items
                 items = self.fetch_rss(
                     source['url'],
                     source_name,
-                    max_items,
-                    max_days
+                    effective_max,
+                    max_days,
+                    source_tag=source_tag,
                 )
                 all_items.extend(items)
             elif source_type == 'web':
