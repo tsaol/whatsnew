@@ -13,11 +13,14 @@ BEIJING_TZ = timezone(timedelta(hours=8))
 
 # 内容分类定义（按优先级排序）
 CONTENT_CATEGORIES = [
+    {"name": "AWS 西班牙", "icon": "ES", "description": "eu-south-2 (Zaragoza) region 服务上线、区域扩展、本地案例", "color": "#dc2626", "bg": "#fef2f2", "always_show": True},
     {"name": "Agent 专项", "icon": "A", "description": "Agent 框架、MCP、Multi-Agent、Tool Use", "color": "#6366f1", "bg": "#eef2ff"},
     {"name": "技术深度", "icon": "T", "description": "LLM、RAG、模型优化、算法创新", "color": "#0891b2", "bg": "#ecfeff"},
     {"name": "AWS 聚焦", "icon": "W", "description": "Bedrock、SageMaker、AWS AI 服务", "color": "#ea580c", "bg": "#fff7ed"},
     {"name": "行业动态", "icon": "I", "description": "企业落地、应用案例、市场趋势", "color": "#059669", "bg": "#ecfdf5"},
 ]
+
+SPAIN_CATEGORY_NAME = "AWS 西班牙"
 
 
 def get_beijing_time():
@@ -639,10 +642,14 @@ class Mailer:
         """
 
         # 按内容类型分组
+        # 特殊规则：is_spain_region 强制归入 "AWS 西班牙"，无论 AI 分类结果是什么
         grouped_by_category = defaultdict(list)
         for item in items:
-            category = item.get('category', '行业动态')
-            grouped_by_category[category].append(item)
+            if item.get('is_spain_region'):
+                grouped_by_category[SPAIN_CATEGORY_NAME].append(item)
+            else:
+                category = item.get('category', '行业动态')
+                grouped_by_category[category].append(item)
 
         # 获取 TOP 新闻的 ID
         top_ids = set()
@@ -656,12 +663,15 @@ class Mailer:
             cat_name = cat_info["name"]
             cat_items = grouped_by_category.get(cat_name, [])
 
-            if not cat_items:
+            # always_show 分类即便当天无内容也要保留占位（避免用户误以为 pipeline 挂了）
+            always_show = cat_info.get("always_show", False)
+            if not cat_items and not always_show:
                 continue
 
             # 类型内按评分排序
             cat_items = sorted(cat_items, key=lambda x: x.get('ai_score', 0), reverse=True)
 
+            count_label = f"{len(cat_items)} 条" if cat_items else "今日无更新"
             html += f"""
                 <div class="category-group">
                     <div class="category-header" style="background: {cat_info['bg']};">
@@ -672,9 +682,19 @@ class Mailer:
                                 <div class="category-desc">{cat_info['description']}</div>
                             </div>
                         </div>
-                        <span class="category-count" style="color: {cat_info['color']};">{len(cat_items)} 条</span>
+                        <span class="category-count" style="color: {cat_info['color']};">{count_label}</span>
                     </div>
             """
+
+            if not cat_items:
+                # always_show 空态占位
+                html += f"""
+                    <div class="news-card" style="text-align:center; color:#94a3b8; padding:24px;">
+                        今日暂无 {cat_name} 相关更新
+                    </div>
+                    </div>
+                """
+                continue
 
             for item in cat_items:
                 is_top = item.get('id') in top_ids

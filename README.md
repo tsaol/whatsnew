@@ -72,11 +72,21 @@ python3 main.py
 
 ### 4. Deploy
 
-**Crontab (daily at 6:00 AM UTC+8):**
+**Crontab schedule (北京时间):**
 
 ```bash
-0 22 * * * cd /path/to/whatsnew && python3 test_once.py >> cron.log 2>&1
+# AI 日报: 每天 06:00 BJT (= 22:00 UTC 前一天)
+0 22 * * *       cd /path/to/whatsnew/ai   && python3 test_once.py >> cron.log 2>&1
+
+# Ecom 日报: 每周一/三/五 06:30 BJT (= 22:30 UTC 周日/二/四)
+30 22 * * 0,2,4  cd /path/to/whatsnew/ecom && python3 test_once.py >> cron.log 2>&1
+
+# Ecom 周报: 每周六 01:00 BJT (= 17:00 UTC 周五)
+0  17 * * 5      cd /path/to/whatsnew/ecom && python3 weekly_report.py >> cron.log 2>&1
 ```
+
+> BJT 星期 X 早上 → UTC 星期 X-1 晚上，所以 cron 的 day-of-week 是**前一天**：
+> 周一 → 0, 周三 → 2, 周五 → 4, 周六 → 5
 
 ## Cost
 
