@@ -158,7 +158,6 @@ def get_freshness_badge(date_str):
 
 class Mailer:
     def __init__(self, config):
-        self.provider = config.get('provider', 'smtp')
         # 解析收件人列表 (支持逗号分隔)
         to_raw = config['to']
         if isinstance(to_raw, list):
@@ -166,50 +165,16 @@ class Mailer:
         else:
             self.to_emails = [e.strip() for e in to_raw.split(',')]
 
-        if self.provider == 'resend':
-            self.resend_api_key = config.get('resend_api_key')
-            self.from_email = config.get('from_email')
-        else:
-            self.smtp_server = config['smtp_server']
-            self.smtp_port = config['smtp_port']
-            self.username = config['username']
-            self.password = config['password']
+        # 126 邮箱 SMTP（xcaoliu.com 已删除，不再用 Resend）
+        self.smtp_server = config['smtp_server']
+        self.smtp_port = config['smtp_port']
+        self.username = config['username']
+        self.password = config['password']
 
     def send(self, subject, content):
         """发送邮件"""
-        if self.provider == 'resend':
-            return self._send_resend(subject, content)
-        else:
-            return self._send_smtp(subject, content)
+        return self._send_smtp(subject, content)
 
-    def _send_resend(self, subject, content):
-        """使用 Resend API 发送邮件"""
-        try:
-            response = requests.post(
-                'https://api.resend.com/emails',
-                headers={
-                    'Authorization': f'Bearer {self.resend_api_key}',
-                    'Content-Type': 'application/json'
-                },
-                json={
-                    'from': self.from_email,
-                    'to': self.to_emails,
-                    'subject': subject,
-                    'html': content
-                },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                print(f"邮件发送成功 (Resend): {subject}")
-                return True
-            else:
-                print(f"邮件发送失败 (Resend): {response.status_code} - {response.text}")
-                return False
-
-        except Exception as e:
-            print(f"邮件发送失败 (Resend): {e}")
-            return False
 
     def _send_smtp(self, subject, content):
         """使用 SMTP 发送邮件"""
