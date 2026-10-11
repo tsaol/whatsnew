@@ -529,7 +529,6 @@ def format_weekly_email(news_items: list, analysis: dict, stats: dict) -> str:
 
 def send_weekly_email(html_content: str, config: Config) -> bool:
     """发送周报邮件"""
-    import requests
 
     email_config = config.get('email', {})
     if not email_config.get('enabled', False):
@@ -540,39 +539,10 @@ def send_weekly_email(html_content: str, config: Config) -> bool:
     week_start = now - timedelta(days=7)
     subject = f"电商+AI 周报 | {week_start.strftime('%m.%d')}-{now.strftime('%m.%d')} Ecom Weekly Intelligence"
 
-    api_key = email_config.get('resend_api_key')
-    from_email = email_config.get('from_email', 'weekly@xcaoliu.com')
-    to_emails = email_config.get('to', '').split(',')
-    to_emails = [e.strip() for e in to_emails if e.strip()]
-
-    if not api_key or not to_emails:
-        print("[Weekly] 邮件配置不完整")
-        return False
-
+    # 126 邮箱 SMTP，和日报用同一个 Mailer
+    from src.mailer import Mailer
     try:
-        response = requests.post(
-            'https://api.resend.com/emails',
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'from': f'Ecom+AI Weekly <{from_email}>',
-                'to': to_emails,
-                'subject': subject,
-                'html': html_content
-            }
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            print(f"[Weekly] 邮件发送成功: {result.get('id')}")
-            print(f"[Weekly] 收件人: {', '.join(to_emails)}")
-            return True
-        else:
-            print(f"[Weekly] 邮件发送失败: {response.status_code} - {response.text}")
-            return False
-
+        return Mailer(email_config).send(subject, html_content)
     except Exception as e:
         print(f"[Weekly] 邮件发送异常: {e}")
         return False
